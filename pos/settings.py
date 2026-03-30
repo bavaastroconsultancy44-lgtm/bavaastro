@@ -162,3 +162,4 @@ DEFAULT_FROM_EMAIL = os.getenv(
 )
 
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+# Email Settings
