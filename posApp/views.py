@@ -5,7 +5,6 @@ import sys
 import io
 from django.shortcuts import get_object_or_404, redirect, render
 from django.http import HttpResponse, JsonResponse
-from flask import jsonify
 from posApp.models import Category, Employee, Products, Sales, salesItems, Customer, WeeklyDebit
 from django.db.models import Count, Sum
 from django.contrib import messages
