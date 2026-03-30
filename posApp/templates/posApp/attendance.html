@@ -1,0 +1,126 @@
+{% extends "posApp/base.html" %}
+{% load custom_filters %} 
+{% block pageContent %}
+<div class="mdc-layout-grid__cell stretch-card mdc-layout-grid__cell--span-12">
+    <div class="mdc-card p-3">
+        <div class="mb-3">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <h4 class="card-title mb-0">Weekly Attendance</h4>
+                <div class="d-flex flex-wrap gap-2">
+                    <a href="{% url 'attendance_summary' %}" class="btn btn-sm btn-info">
+                        <i class="mdi mdi-chart-bar"></i> Summary
+                    </a>
+                    <a href="?week={{ selected_week }}&export=true" class="btn btn-sm btn-success">
+                        <i class="mdi mdi-file-excel"></i> Export
+                    </a>
+                    <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#emailWeeklyReportModal">
+                        <i class="mdi mdi-email-send"></i> Email
+                    </button>
+                    <div class="dropdown d-inline-block">
+                        <button class="btn btn-sm btn-primary dropdown-toggle" type="button" id="markAttendanceDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                            <i class="mdi mdi-calendar-check"></i> Mark
+                        </button>
+                        <ul class="dropdown-menu" aria-labelledby="markAttendanceDropdown">
+                            {% for day in working_days %}
+                            <li><a class="dropdown-item" href="{% url 'mark_attendance' day|date:'Y-m-d' %}">{{ day|date:"l, M d, Y" }}</a></li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                </div>
+            </div>
+            <div class="d-flex flex-wrap gap-1 mt-2">
+                {% for week in available_weeks %}
+                <a href="?week={{ week.offset }}" 
+                   class="btn {% if selected_week == week.offset %}btn-primary{% else %}btn-outline-primary{% endif %} btn-sm">
+                   {{ week.label }}
+                </a>
+                {% endfor %}
+            </div>
+        </div>
+        
+        <div class="table-responsive">
+            <table class="table table-bordered table-hover">
+                <thead class="bg-light">
+                    <tr>
+                        <th class="align-middle">Employee Name</th>
+                        {% for day in working_days %}
+                        <th class="text-center">{{ day|date:"D" }}<br>{{ day|date:"d/m" }}</th>
+                        {% endfor %}
+                        <th class="align-middle text-center">Weekly<br>Wage</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for employee in employees %}
+                    <tr>
+                        <td>{{ employee.name }}</td>
+                        {% for day in working_days %}
+                            {% with record=attendance_records|get_item:employee.id|get_item:day %}
+                                {% if record %}
+                                    {% if record.present %}
+                                    <td class="text-center bg-success text-white">P</td>
+                                    {% else %}
+                                    <td class="text-center bg-danger text-white">A</td>
+                                    {% endif %}
+                                {% else %}
+                                    <td class="text-center bg-light">-</td>
+                                {% endif %}
+                            {% endwith %}
+                        {% endfor %}
+                        <td class="text-center font-weight-bold">₹{{ weekly_wages|get_item:employee.id }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="{{ working_days|length|add:2 }}" class="text-center">No employees found</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        
+        <div class="mt-3">
+            <div class="row">
+                <div class="col-md-4">
+                    <div class="card">
+                        <div class="card-body">
+                            <h5 class="card-title">Total Weekly Wages</h5>
+                            <h3 class="text-primary">₹{{ weekly_wages.values|sum_values }}</h3>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Email Weekly Report Modal -->
+<div class="modal fade" id="emailWeeklyReportModal" tabindex="-1" aria-labelledby="emailWeeklyReportModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="GET" action="{% url 'attendance' %}">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="emailWeeklyReportModalLabel">Send Weekly Attendance Report</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <!-- Hidden fields to maintain current filters -->
+                    <input type="hidden" name="week" value="{{ selected_week }}">
+                    <input type="hidden" name="email" value="true">
+                    
+                    <div class="mb-3">
+                        <label for="email_to" class="form-label">Recipient Email</label>
+                        <input type="email" class="form-control" id="email_to" name="email_to" required>
+                    </div>
+                    
+                    <p class="text-muted small">
+                        An Excel report for the currently selected week will be sent to the specified email address.
+                    </p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Send Report</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock pageContent %}

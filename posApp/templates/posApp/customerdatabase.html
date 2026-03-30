@@ -1,0 +1,99 @@
+{% extends "posApp/base.html" %}
+{% load humanize %}
+{% block pageContent %}
+<div class="mdc-layout-grid__cell stretch-card mdc-layout-grid__cell--span-12">
+    <div class="mdc-card py-2">
+        <div class="d-flex justify-content-between align-items-center">
+            <h4 class="card-title mb-0">Customer Database</h4>
+            <!-- <div class="text-start">
+                <button class="btn btn-primary bg-gradient btn-sm rounded-0" id="create_new" data-bs-toggle="modal" data-bs-target="#addCustomerModal"><i class="mdi mdi-plus"></i><span> Add New</span></button>
+            </div> -->
+        </div>
+    </div>
+</div>
+<div class="mdc-layout-grid__cell stretch-card mdc-layout-grid__cell--span-12">
+    <div class="mdc-card">
+        <form action="{% url 'customerdatabase-page' %}" method="GET">
+            <input type="text" name="q" value="{% if search_query %}{{ search_query }}{% endif %}" placeholder="Search by customer name or phone number">
+            <button type="submit">Search</button>
+        </form>
+        <br>
+        <div class="table-responsive">
+            <table class="table table-striped table-bordered">
+                <colgroup>
+                    <col width="5%">
+                    <col width="20%"> 
+                    <col width="20%">
+                    <col width="20%">
+                    <col width="10%">
+                    
+                </colgroup>
+                <thead>
+                    <tr>
+                        <th class="text-center py-1">S/N</th>
+                        <th class="text-center py-1">Customer Name</th>
+                        <th class="text-center py-1">Phone Number</th>
+                        <th class="text-center py-1">Customer City</th>
+                        <th class="text-center py-1">Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    
+                    {% for customer in customers %}
+                    <tr>
+                        <td class="px-2 py-1 text-center">{{ forloop.counter }}</td>
+                        <td class="px-2 py-1 text-start">{{ customer.name }}</td>
+                        <td class="px-2 py-1 text-start">{{ customer.phone_number }}</td>
+                        <td class="px-2 py-1 text-start">{{ customer.city }}</td>
+                        <td class="px-2 py-1 text-center">
+                            <!-- <button class="mdc-button mdc-button--raised p-1 icon-button filled-button--light mdc-ripple-upgraded edit-data" type="button" data-id="{{ customer.pk }}" data-name="{{ customer.name }}" data-phone_number="{{ customer.phone_number }}" data-area="{{ customer.area }}" data-city="{{ customer.city }}" title="Edit">
+                                <i class="material-icons mdc-button__icon">edit</i>
+                            </button> -->
+                            <button class="mdc-button mdc-button--raised p-1 icon-button filled-button--danger mdc-ripple-upgraded delete-data" type="button" data-id="{{ customer.pk }}" title="Delete">
+                                <i class="material-icons mdc-button__icon">delete_outline</i>
+                            </button>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                    
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Delete customer
+        document.querySelectorAll('.delete-data').forEach(function(button) {
+            button.addEventListener('click', function() {
+                const customerId = this.getAttribute('data-id');
+                if (confirm('Are you sure you want to delete this customer?')) {
+                    fetch(`{% url 'delete_customer' %}?id=${customerId}`, {
+                        method: 'DELETE',
+                        headers: {
+                            'X-CSRFToken': '{{ csrf_token }}',
+                            'Content-Type': 'application/json'
+                        }
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            window.location.reload();
+                        } else {
+                            alert('Failed to delete customer.');
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        alert('An error occurred while deleting the customer.');
+                    });
+                }
+            });
+        });
+
+        
+    });
+</script>
+{% endblock pageContent %}

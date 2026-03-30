@@ -1,0 +1,277 @@
+{% extends "posApp/base.html" %} 
+{% block pageContent %}
+<div class="mdc-layout-grid__cell stretch-card mdc-layout-grid__cell--span-12">
+    <div class="mdc-card py-2">
+        <div class="d-flex justify-content-between align-items-center">
+            <h4 class="card-title mb-0">Weekly Sales Reports</h4>
+            <div class="d-flex align-items-center gap-2">
+                <div class="btn-group">
+                    <button type="button" class="btn btn-success btn-sm dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="material-icons small">file_download</i> Download Report
+                    </button>
+                    <ul class="dropdown-menu">
+                        <li><a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#monthlyReportModal">Monthly Report</a></li>
+                        <li><a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#dateRangeReportModal">Custom Date Range</a></li>
+                    </ul>
+                </div>
+                <div class="btn-group">
+                    <button type="button" class="btn btn-info btn-sm dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="material-icons small">email</i> Email Report
+                    </button>
+                    <ul class="dropdown-menu">
+                        <li><a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#emailMonthlyReportModal">Monthly Report</a></li>
+                        <li><a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#emailDateRangeReportModal">Custom Date Range</a></li>
+                    </ul>
+                </div>
+                <form method="GET" action="{% url 'report' %}" class="d-flex align-items-center">
+                    <div class="form-group mx-2 mb-0">
+                        <label for="filter_date" class="form-label small me-2">Filter by Date:</label>
+                        <input type="date" id="filter_date" name="filter_date" class="form-control form-control-sm" 
+                               value="{{ filter_date|date:'Y-m-d' }}" onchange="this.form.submit()">
+                    </div>
+                    {% if filter_date %}
+                        <a href="{% url 'report' %}" class="btn btn-sm btn-outline-secondary ms-2">Clear Filter</a>
+                    {% endif %}
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="mdc-layout-grid__cell stretch-card mdc-layout-grid__cell--span-12">
+    {% if weekly_reports %}
+        <div class="row row-cols-1 row-cols-md-3 g-4">
+            {% for week in weekly_reports %}
+            <div class="col">
+                <a href="{% url 'weekly_report_detail' week.week_number %}" class="text-decoration-none">
+                    <div class="card shadow-sm 
+                        {% if week.is_selected_week %}border-left-warning bg-light{% elif week.is_current_week %}border-left-success bg-light{% else %}border-left-primary{% endif %} 
+                        h-100 py-2">
+                        <div class="card-body">
+                            <div class="text-xs font-weight-bold text-uppercase mb-1 
+                                {% if week.is_selected_week %}text-warning{% elif week.is_current_week %}text-success{% else %}text-primary{% endif %}">
+                                Week {{ week.week_number }}
+                                {% if week.is_selected_week %}<i class="fas fa-filter ms-1"></i>{% endif %}
+                            </div>
+                            <div class="h6 mb-0 font-weight-bold text-dark">
+                                {{ week.start_date }} ✨ {{ week.end_date }}
+                            </div>
+                            <div class="mt-2">
+                                <span class="badge {% if week.is_selected_week %}bg-warning text-dark{% elif week.is_current_week %}bg-success text-white{% else %}bg-info text-dark{% endif %}">
+                                    Total Sales: ₹{{ week.total_sales }}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                </a>
+            </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <div class="row">
+            <div class="col-12">
+                <div class="alert alert-info text-center">
+                    <i class="fas fa-info-circle me-2"></i> No weekly reports found for the selected date.
+                    {% if filter_date %}
+                        <a href="{% url 'report' %}" class="btn btn-sm btn-outline-primary ms-3">View All Reports</a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    {% endif %}
+    </div>
+</div>
+
+<!-- Monthly Report Export Modal -->
+<div class="modal fade" id="monthlyReportModal" tabindex="-1" aria-labelledby="monthlyReportModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="monthlyReportModalLabel">Export Monthly Report</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form action="{% url 'export_monthly_report' %}" method="post">
+                {% csrf_token %}
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="month" class="form-label">Select Month</label>
+                        <input type="month" class="form-control" id="month" name="month" required 
+                               value="{{ filter_date|date:'Y-m' }}" max="{{ today|date:'Y-m' }}">
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Include in Report:</label>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" name="include_daily_sales" id="includeDailySalesMonthly" checked>
+                            <label class="form-check-label" for="includeDailySalesMonthly">
+                                Daily Sales Breakdown
+                            </label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" name="include_debits" id="includeDebitsMonthly" checked>
+                            <label class="form-check-label" for="includeDebitsMonthly">
+                                Debit History
+                            </label>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-success">Download Excel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Email Monthly Report Modal -->
+<div class="modal fade" id="emailMonthlyReportModal" tabindex="-1" aria-labelledby="emailMonthlyReportModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="emailMonthlyReportModalLabel">Email Monthly Report</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form action="{% url 'email_monthly_report' %}" method="post">
+                {% csrf_token %}
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="email_month" class="form-label">Select Month</label>
+                        <input type="month" class="form-control" id="email_month" name="month" required 
+                               value="{{ filter_date|date:'Y-m' }}" max="{{ today|date:'Y-m' }}">
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="recipient_email" class="form-label">Recipient Email</label>
+                        <input type="email" class="form-control" id="recipient_email" name="recipient_email" 
+                               value="sivaprasanth8208@gmail.com" required>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Include in Report:</label>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" name="include_daily_sales" id="emailIncludeDailySalesMonthly" checked>
+                            <label class="form-check-label" for="emailIncludeDailySalesMonthly">
+                                Daily Sales Breakdown
+                            </label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" name="include_debits" id="emailIncludeDebitsMonthly" checked>
+                            <label class="form-check-label" for="emailIncludeDebitsMonthly">
+                                Debit History
+                            </label>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-info">Send Email</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Date Range Report Export Modal -->
+<div class="modal fade" id="dateRangeReportModal" tabindex="-1" aria-labelledby="dateRangeReportModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="dateRangeReportModalLabel">Export Date Range Report</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form action="{% url 'export_date_range_report' %}" method="post">
+                {% csrf_token %}
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="start_date" class="form-label">Start Date</label>
+                        <input type="date" class="form-control" id="start_date" name="start_date" required
+                               value="{{ filter_date|date:'Y-m-d' }}" max="{{ today|date:'Y-m-d' }}">
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="end_date" class="form-label">End Date</label>
+                        <input type="date" class="form-control" id="end_date" name="end_date" required
+                               value="{{ today|date:'Y-m-d' }}" max="{{ today|date:'Y-m-d' }}">
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Include in Report:</label>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" name="include_daily_sales" id="includeDailySalesDateRange" checked>
+                            <label class="form-check-label" for="includeDailySalesDateRange">
+                                Daily Sales Breakdown
+                            </label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" name="include_debits" id="includeDebitsDateRange" checked>
+                            <label class="form-check-label" for="includeDebitsDateRange">
+                                Debit History
+                            </label>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-success">Download Excel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Email Date Range Report Modal -->
+<div class="modal fade" id="emailDateRangeReportModal" tabindex="-1" aria-labelledby="emailDateRangeReportModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="emailDateRangeReportModalLabel">Email Date Range Report</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form action="{% url 'email_date_range_report' %}" method="post">
+                {% csrf_token %}
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="email_start_date" class="form-label">Start Date</label>
+                        <input type="date" class="form-control" id="email_start_date" name="start_date" required
+                               value="{{ filter_date|date:'Y-m-d' }}" max="{{ today|date:'Y-m-d' }}">
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="email_end_date" class="form-label">End Date</label>
+                        <input type="date" class="form-control" id="email_end_date" name="end_date" required
+                               value="{{ today|date:'Y-m-d' }}" max="{{ today|date:'Y-m-d' }}">
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="date_range_recipient_email" class="form-label">Recipient Email</label>
+                        <input type="email" class="form-control" id="date_range_recipient_email" name="recipient_email" 
+                               value="sivaprasanth8208@gmail.com" required>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Include in Report:</label>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" name="include_daily_sales" id="emailIncludeDailySalesDateRange" checked>
+                            <label class="form-check-label" for="emailIncludeDailySalesDateRange">
+                                Daily Sales Breakdown
+                            </label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" name="include_debits" id="emailIncludeDebitsDateRange" checked>
+                            <label class="form-check-label" for="emailIncludeDebitsDateRange">
+                                Debit History
+                            </label>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-info">Send Email</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+{% endblock pageContent %}

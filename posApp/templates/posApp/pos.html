@@ -1,0 +1,368 @@
+{% extends "posApp/base.html" %} {% block pageContent %}
+<style>
+    fieldset {
+        margin-bottom: 0;
+        /* Reduce the space below the fieldset */
+        padding-bottom: 0;
+    }
+
+    .row {
+        margin-top: 0;
+        /* Adjusts the space between fieldset and the next div */
+        padding-top: 0;
+    }
+    
+</style>
+<!-- <div class="mdc-layout-grid__cell stretch-card mdc-layout-grid__cell--span-12">
+    <div class="mdc-card py-2">
+        <div class="d-flex justify-content-between align-items-center">
+            <h4 class="card-title mb-0">Point of Sales</h4>
+        </div>
+    </div>
+</div> -->
+<div class="mdc-layout-grid__cell stretch-card mdc-layout-grid__cell--span-12">
+    <div class="mdc-card">
+        <form action="" id="pos-form">
+            <fieldset>
+                <!-- <legend>Add Products</legend> -->
+                <div class="row align-items-end">
+                    <div class="col-lg-5 col-md-5 col-sm-12">
+                        <div class="form-group mb-3">
+                            <label for="product-id">Select Product</label>
+                            <select id="product-id" class="form-select form-select-sm">
+                                {% for product in products %}
+                                <option value="{{ product.pk }}" {% if forloop.first %}selected{% endif %}>
+                                    {{ product.name }} - {{ product.price }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                    <div class="col-lg-3 col-md-5 col-md-12">
+                        <div class="form-group mb-3">
+                            <label for="product-qty">Qty</label>
+                            <input type="number" class="form-control form-control-sm text-center" step="any"
+                                id="product-qty" value="1" readonly>
+                        </div>
+                    </div>
+                </div>
+                <hr>
+                <div class="row "></div>
+                <div class="row">
+                    <div class="col-lg-4 col-md-4 col-sm-12">
+                        <div class="form-group mb-3">
+                            <label for="customer-name">Customer Name</label>
+                            <input type="text" class="form-control form-control-sm rounded-0" id="customer-name"
+                                name="customer_name">
+                        </div>
+                    </div>
+                    <div class="col-lg-4 col-md-4 col-sm-12">
+                        <div class="form-group mb-3">
+                            <label for="customer-phone">Customer Phone</label>
+                            <input type="text" class="form-control form-control-sm rounded-0" id="customer-phone"
+                                name="customer_phone">
+                        </div>
+                    </div>
+                    <div class="col-lg-4 col-md-4 col-sm-12">
+                        <div class="form-group mb-3">
+                            <label for="customer-city">Customer Area</label>
+                            <input type="text" class="form-control form-control-sm rounded-0" id="customer-city"
+                                name="customer_city">
+                        </div>
+                    </div>
+                </div>
+                <hr>
+                <div class="row mt-3">
+                    <div class="col-lg-4 col-md-4 col-sm-12 me-2">
+                        <div class="form-group mb-3">
+                            <label for="room-no">Room Number</label>
+                            <select class="form-control rounded-0" id="room-no" name="room_no">
+                                <option value="1">1</option>
+                                <option value="2">2</option>
+                                <option value="3">3</option>
+                                <option value="4">4</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </fieldset>
+            <fieldset>
+                <div class="d-flex w-100" id="POS-field">
+                    <div class="col-8 bg-gradient bg-light border h-50">
+                        <table class="table table-bordered">
+                            <colgroup>
+                                <col width="5%">
+                                <col width="15%">
+                                <col width="40%">
+                                <col width="20%">
+                                <col width="20%">
+                            </colgroup>
+                            <thead>
+                                <tr class="bg-dark bg-gradient bg-opacity-50 text-light">
+                                    <th class="py-1 px-2 text-center  text-light"></th>
+                                    <th class="py-1 px-2 text-center  text-light">QTY</th>
+                                    <th class="py-1 px-2 text-center  text-light">Product</th>
+                                    <th class="py-1 px-2 text-center  text-light">Price</th>
+                                    <th class="py-1 px-2 text-center  text-light">Total</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="col-4 bg-gradient bg-dark bg-opacity-50 border h-50">
+                        <div class="col-12 py-4 px-2">
+                            <dl>
+                                <dt class="h4 fw-bold text-light">Sub Total</dt>
+                                <dd class="text-end py-1 px-2 rounded-0 bg-light">
+                                    <input type="hidden" name="sub_total" value="0">
+                                    <span class="h3 fw-bold" id="sub_total">0.00</span>
+                                </dd>
+                                <!-- <dt class="h4 fw-bold text-light">Tax Inclusive (%)</dt>
+                                <dd>
+                                    <input type="number" class="form-control form-control-lg rounded-0 text-end" step="any" min="0" max="100" name="tax" value="0">
+                                </dd>
+                                <dt class="h4 fw-bold text-light">Tax Amount</dt>
+                                <dd class="text-end py-1 px-2 rounded-0 bg-light">
+                                    <input type="hidden" name="tax_amount" value="0">
+                                    <span class="h3 fw-bold" id="tax_amount">0.00</span>
+                                </dd> -->
+                                <dt class="h4 fw-bold text-light">Grand Total</dt>
+                                <dd class="text-end py-1 px-2 rounded-0 bg-light">
+                                    <input type="hidden" name="grand_total" value="0">
+                                    <input type="hidden" name="tendered_amount" value="0">
+                                    <input type="hidden" name="amount_change" value="0">
+                                    <input type="hidden" name="grand_total" value="0">
+                                    <input type="hidden" name="grand_total" value="0">
+                                    <span class="h3 fw-bold" id="grand_total">0.00</span>
+                                </dd>
+                            </dl>
+                        </div>
+                    </div>
+                </div>
+            </fieldset>
+            <div class="row" style="margin-top: -190px;">
+                <div class="col-md-12 text-end">
+                    <button class="btn btn-primary btn-sm rounded-0 me-2" type="button" id="add_item">
+                        <span style="font-weight: bold; margin-right: 4px;">+</span>Add Item
+                    </button>
+                    <button class="btn btn-primary btn-sm rounded-0" type="button" id="check_out">
+                        <i class="mdi mdi-save"></i> Print Receipt
+                    </button>
+                </div>
+            </div>        
+            <div class="col-lg-3 col-md-4 col-sm-12">
+                <div class="form-group mb-3">
+                    <label>Payment Method</label><br>
+                    <div class="form-check form-check-inline">
+                        <input class="form-check-input" type="radio" name="payment_method" id="payment-cash"
+                            value="cash" checked>
+                        <label class="form-check-label" for="payment-cash">Cash</label>
+                    </div>
+                    <div class="form-check form-check-inline">
+                        <input class="form-check-input" type="radio" name="payment_method" id="payment-card"
+                            value="card">
+                        <label class="form-check-label" for="payment-card">Card</label>
+                    </div>
+                    <div class="form-check form-check-inline">
+                        <input class="form-check-input" type="radio" name="payment_method" id="payment-gpay"
+                            value="gpay">
+                        <label class="form-check-label" for="payment-gpay">GPay</label>
+                    </div>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+<noscript id="item-clone">
+    <tr>
+        <td class="px-2 py-1 text-center">
+            <button class="btn btn-sm btn-outline-danger rounded-0 rem-item" type="button"><i
+                    class="mdi mdi-close"></i></button>
+        </td>
+        <td class="px-2 py-1">
+            <input type="hidden" name="product_id[]">
+            <input type="hidden" name="price[]">
+            <input type="number" name="qty[]" min="0" class="form-control form-control-sm rounded-0 text-center">
+        </td>
+        <td class="px-2 py-1 product_name text-start"></td>
+        <td class="px-2 py-1 product_price text-end"></td>
+        <td class="px-2 py-1 product_total text-end"></td>
+    </tr>
+</noscript> {% endblock pageContent %} {% block ScriptBlock %}
+<script>
+    // Function to check if customer exists by phone number
+    $('#customer-phone').on('blur', function () {
+        var customer_phone = $(this).val();
+
+        if (customer_phone) {
+            $.ajax({
+                url: '{% url "get_customer_by_phone" %}',  // Ensure the correct URL for the Django view
+                method: 'GET',
+                data: {
+                    'customer_phone': customer_phone
+                },
+                success: function (response) {
+                    if (response.status === 'success') {
+                        // Populate the fields with the returned customer data
+                        $('#customer-name').val(response.customer_name);
+                        $('#customer-city').val(response.customer_city);
+                    } else if (response.status === 'not_found') {
+                        // Clear the fields if customer not found
+                        $('#customer-name').val('');
+                        $('#customer-city').val('');
+                        alert('Customer not found.');
+                    }
+                },
+                error: function (xhr, status, error) {
+                    console.error('AJAX Error:', error);
+                }
+            });
+        }
+    });
+</script>
+<script>
+    var product_json = '{{ product_json }}'
+    if (product_json == "" || product_json == "{}") {
+        product_json = {}
+    } else {
+        product_json = product_json.replaceAll('&quot;', '"')
+        product_json = $.parseJSON(product_json)
+    }
+    var prod_arr = {}
+    if (Object.keys(product_json).length > 0) {
+        Object.keys(product_json).map(k => {
+            prod_arr[product_json[k].id] = product_json[k]
+        })
+    }
+
+    function calc() {
+        var sub_total = 0;
+        var grand_total = 0;
+        $('#POS-field table tbody tr').each(function () {
+            price = $(this).find('[name="price[]"]').val()
+            qty = $(this).find('[name="qty[]"]').val()
+            qty = qty > 0 ? qty : 0
+            total = parseFloat(price) * parseFloat(qty)
+            $(this).find('.product_total').text(parseFloat(total).toLocaleString('en-US'))
+            sub_total += parseFloat(total)
+        })
+        tax = $('[name="tax"]').val()
+        tax = tax / 100;
+        var tax_amount = parseFloat(sub_total) * parseFloat(tax);
+        $('#tax_amount').text(parseFloat(tax_amount).toLocaleString('en-US'))
+        $('[name="tax_amount"]').val(parseFloat(tax_amount))
+        $('#grand_total').text(parseFloat(sub_total).toLocaleString('en-US'))
+        $('[name="grand_total"]').val(parseFloat(sub_total))
+        $('#sub_total').text(parseFloat(sub_total).toLocaleString('en-US'))
+        $('[name="sub_total"]').val(parseFloat(sub_total))
+    }
+
+    $(function () {
+        $('#product-id').select2({
+            placeholder: "Please Select Product here",
+            width: '100%'
+        })
+
+        $('#add_item').click(function () {
+            var id = $('#product-id').val();
+            var qty = $('#product-qty').val();
+            if (id && qty && prod_arr[id]) {
+                // Check if there's already a product in the table
+                if ($('#POS-field table tbody tr').length > 0) {
+                    alert('You can only select one product. Please remove the existing product before adding a new one.');
+                    return false;
+                }
+                if ($('#POS-field table tbody input[name="product_id[]"][value="' + id + '"]').length > 0) {
+                    alert('Item Already in the List.');
+                    return false;
+                }
+                data = prod_arr[id];
+                var tr = $($('noscript#item-clone').html()).clone();
+                tr.find('[name="qty[]"]').val(qty);
+                tr.find('[name="product_id[]"]').val(id);
+                tr.find('[name="price[]"]').val(data.price);
+                tr.find('.product_name').text(data.name);
+                tr.find('.product_price').text(parseFloat(data.price).toLocaleString('en-US'));
+                tr.find('.product_total').text(parseFloat(data.price * qty).toLocaleString('en-US'));
+                $('#POS-field table tbody').append(tr);
+                $('#product-id').val('').trigger('change');
+                $('#product-qty').val(1);
+                calc();
+                tr.find('[name="qty[]"]').on('input keypress keyup keydown', function () {
+                    calc();
+                });
+                tr.find('.rem-item').click(function () {
+                    if (confirm("Are you sure to remove " + data.name + " product from the list?")) {
+                        tr.remove();
+                        calc();
+                    }
+                });
+            }
+        });
+
+        $('[name="tax"]').on('input keypress keydown keyup', function () {
+            calc();
+        });
+
+
+        $('#check_out').click(function () {
+            if ($('#POS-field table tbody tr').length <= 0) {
+                alert("Add at least 1 product first!");
+                return false;
+            }
+            $('#pos-form').submit(); // Directly submit the POS form to save the transaction
+        });
+
+        $('#pos-form').submit(function (e) {
+            e.preventDefault();
+            var _this = $(this);
+            $('.err-msg').remove();
+            var el = $('<div>');
+            el.addClass("alert alert-danger err-msg");
+            el.hide();
+            if (_this[0].checkValidity() == false) {
+                _this[0].reportValidity();
+                return false;
+            }
+            start_loader();
+            $.ajax({
+                headers: {
+                    "X-CSRFToken": '{{csrf_token}}'
+                },
+                url: "{% url 'save-pos' %}",
+                data: new FormData($(this)[0]),
+                cache: false,
+                contentType: false,
+                processData: false,
+                method: 'POST',
+                type: 'POST',
+                dataType: 'json',
+                error: err => {
+                    console.log(err);
+                    end_loader();
+                },
+                success: function (resp) {
+                    if (typeof resp == 'object' && resp.status == 'success') {
+                        el.removeClass("alert alert-danger err-msg");
+                        uni_modal("Receipt", "{% url 'receipt-modal' %}?id=" + resp.sale_id);
+                        $('#uni_modal').on('hide.bs.modal', function () {
+                            location.reload();
+                        });
+                    } else if (resp.status == 'failed' && !!resp.msg) {
+                        el.text(resp.msg);
+                    } else {
+                        el.text("An error occurred", 'error');
+                        end_loader();
+                        console.err(resp);
+                    }
+                    _this.prepend(el);
+                    el.show('slow');
+                    $("html, body, .modal").scrollTop(0);
+                    end_loader();
+                }
+            });
+        });
+    });
+</script>
+{% endblock ScriptBlock %}

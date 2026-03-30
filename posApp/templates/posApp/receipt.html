@@ -1,0 +1,279 @@
+{% load humanize %}
+{% load static %}
+<style>
+    #uni_modal .modal-footer {
+        display: none;
+    }
+
+    .fixed-footer {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        width: 100%;
+        background-color: #76767d;
+        padding: 10px 0;
+        box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
+        z-index: 100;
+    }
+
+    .fixed-footer .btn {
+        margin-right: 130px;
+    }
+</style>
+<div class="container-fluid">
+    <div id="outprint">
+        <div class="row">
+            <!-- Right-aligned content -->
+            <div class="col text-end">
+                <small>UDYAM-TN-07-0038482</small><br>
+                <small>PAN No.AAVFB0788P</small>
+            </div>
+        </div>
+        <div class="row">
+            <!-- Center-aligned content -->
+            <div class="col text-center">
+                <small style="font-size: 16px;" class="fw-bold">BAVA ASTRO CONSULTANCY</small><br>
+                <small>No.63, Muthugoundampalayam, Kodumudi Road, Anjur (Po)</small><br>
+                <small>Erode Dt - 638 151.</small><br>
+                <small style="font-size: 16px;" class="fw-bold">Receipt</small><br>
+            </div>
+        </div>
+        <div class="lh-1">
+            <div>
+                <span>Room No : </span>
+                <span id="roomNoDisplay" style="font-size: 24px; font-weight: bold;">{{ transaction.room_no }}</span>
+                <br>
+                <input type="text" id="editRoomNo" style="display: none; font-size: 24px;"
+                    class="form-control text-center">
+                <span>Serial No : </span> {{ transaction.serial_no }} <br>
+                <span style="font-weight: bold;">Date: </span>
+                <span id="dateTimeDisplay" style="font-weight: bold;">{{ transaction.date_added|date:"M d Y, h:i A"}}</span>
+                <input type="datetime-local" id="editDateTime" style="display: none; font-size: 24px;"
+                    class="form-control text-center">
+                <br>
+                <span>Token No : </span>
+                <br>
+                <span id="tokenNoDisplay" style="font-size: 40px; font-weight: bold;">{{ transaction.token_no }}</span>
+                <input type="text" id="editTokenNo" style="display: none; font-size: 24px;"
+                    class="form-control text-center">
+                <br>
+                <span>Name : </span> {{ transaction.customer_name }} <br>
+                <span>Phone : </span> {{ transaction.customer_phone }} <br>
+
+            </div>
+        </div>
+        <div class="lh-1">
+            <div class="d-flex w-100 align-items-end border-bottom" style="gap: 3px;">
+                <div class="col-2 text-center fw-bold">Qty</div>
+                <div class="col-4 text-center fw-bold">Amount</div>
+            </div>
+            {% for item in salesItems %}
+            <div class="d-flex w-100 align-items-end" style="gap: 3px;">
+                <div class="col-2 text-center">{{ item.qty|intcomma|floatformat:0 }}</div>
+                <div class="col-4 text-center">{{ item.total|intcomma }}</div>
+            </div>
+            {% endfor %}
+            <br>
+            <div class="d-flex w-100 align-items-end">
+                <div class="col-6 text-start fw-bold">Total</div>
+                <div class="col-6 text-end fw-bold">{{ transaction.grand_total|intcomma }}</div>
+            </div>
+            <div class="d-flex w-100 align-items-end">
+                <div class="col-6 text-start fw-bold">Payment Method</div>
+                <div class="col-6 text-end fw-bold">{{ transaction.payment_method }}</div>
+            </div>
+            <div class="d-flex w-100 justify-content-end my-3">
+                <div class="text-right">
+                    <img src="{% static 'posAPP/assets/material-admin/images/QR.jpg' %}" alt="QR Code"
+                        style="width: 70px; height: 40px;">
+                    <p style="font-size: 14px; margin: 0;">Signing Authority</p>
+                </div>
+            </div>
+            <p style="text-align: center; font-size: 15px; font-weight: bold; margin: 1px 0 2px 0;">Thank You!</p>
+            <p style="font-size: 12px; line-height: 1.0; margin: 0;">விதிமுறைகள்:</p>
+            <p style="font-size: 12px; line-height: 1.2; margin: 0;">
+                புதன், வியாழன் காலை 6 மணி முதல் மதியம் 12 மணி வரை மட்டுமே டோக்கன் வழங்கப்படும்
+            </p>
+        </div>
+
+    </div>
+    <hr>
+    <div class="py-3"></div>
+    <div class="fixed-footer">
+        <div class="container text-end">
+            <button class="btn btn-light bg-gradient border rounded-0 btn-sm me-1" type="button" id="editDateTimeBtn">
+                <i class="mdi mdi-pencil"></i> Edit Date & Time
+            </button>
+            <button class="btn btn-success bg-gradient border rounded-0 btn-sm me-1" type="button" id="saveDateTimeBtn"
+                style="display: none;">
+                <i class="mdi mdi-check"></i> Save
+            </button>
+            <button class="btn btn-secondary bg-gradient border rounded-0 btn-sm me-1" type="button"
+                id="cancelDateTimeEditBtn" style="display: none;">
+                <i class="mdi mdi-close"></i> Cancel
+            </button>
+            <button class="btn btn-light bg-gradient border rounded-0 btn-sm me-1" type="button" id="editRoomBtn">
+                <i class="mdi mdi-pencil"></i> Edit Room No
+            </button>
+            <button class="btn btn-success bg-gradient border rounded-0 btn-sm me-1" type="button" id="saveRoomBtn"
+                style="display: none;">
+                <i class="mdi mdi-check"></i> Save
+            </button>
+            <button class="btn btn-secondary bg-gradient border rounded-0 btn-sm me-1" type="button"
+                id="cancelRoomEditBtn" style="display: none;">
+                <i class="mdi mdi-close"></i> Cancel
+            </button>
+            <button class="btn btn-light bg-gradient border rounded-0 btn-sm me-1" type="button" id="editTokenBtn"><i
+                    class="mdi mdi-pencil"></i> Edit Token</button>
+            <button class="btn btn-success bg-gradient border rounded-0 btn-sm me-1" type="button" id="saveTokenBtn"
+                style="display: none;"><i class="mdi mdi-check"></i> Save</button>
+            <button class="btn btn-secondary bg-gradient border rounded-0 btn-sm me-1" type="button" id="cancelEditBtn"
+                style="display: none;"><i class="mdi mdi-close"></i> Cancel</button>
+            <button class="btn btn-light bg-gradient border rounded-0 btn-sm me-1" type="button" id="receipt_print"
+                autofocus>
+                <i class="mdi mdi-printer"></i> Print
+            </button>
+            <button class="btn btn-secondary bg-gradient border rounded-0 btn-sm" type="button"
+                data-bs-dismiss="modal"><i class="mdi mdi-close"></i> Close</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    $(function () {
+
+        document.addEventListener('keydown', function (event) {
+            if (event.key === 'Enter') {
+                document.getElementById('receipt_print').click();
+            }
+        });
+
+        // Print function
+        document.getElementById('receipt_print').addEventListener('click', function () {
+            var head = document.head.cloneNode(true);
+            var p = document.getElementById('outprint').cloneNode(true);
+            var el = document.createElement('div');
+
+            // Set CSS for 3-inch thermal printing
+            head.innerHTML += `
+                <style>
+                    @media print {
+                        @page {
+                            size: 80mm auto;
+                            margin: 0;
+                        }
+                        body {
+                            width: 80mm;
+                            margin: 0;
+                            padding: 0;
+                            font-family: Arial, sans-serif;
+                            font-size: 12px;
+                        }
+                        #outprint {
+                        padding-left: 5mm; /* Increase padding to prevent clipping */
+                        width: 70mm; /* Reduce width slightly to fit better */
+                        margin: 0;
+                        overflow: hidden; /* Ensure content stays within bounds */
+                        }
+                    }
+                </style>
+            `;
+
+            el.appendChild(head);
+            el.querySelector('title').textContent = "Receipt - Print View";
+            el.appendChild(p);
+
+            var nw = window.open('', '_blank', "width=800,height=800,left=800, top=400");
+            nw.document.write(el.innerHTML);
+            nw.document.close();
+
+            // Trigger printing
+            setTimeout(() => {
+                nw.print();
+                setTimeout(() => {
+                    nw.close();
+                    // Redirect to POS page after printing
+                    window.location.href = "{% url 'pos-page' %}";
+                }, 250);
+            }, 300);
+        });
+
+
+        // Edit token number functionality
+        $('#editTokenBtn').on('click', function () {
+            $('#tokenNoDisplay').hide();
+            $('#editTokenNo').val($('#tokenNoDisplay').text()).show();
+            $('#editTokenBtn').hide();
+            $('#saveTokenBtn, #cancelEditBtn').show();
+        });
+
+        $('#saveTokenBtn').on('click', function () {
+            var newTokenNo = $('#editTokenNo').val();
+            $('#tokenNoDisplay').text(newTokenNo).show();
+            $('#editTokenNo').hide();
+            $('#editTokenBtn').show();
+            $('#saveTokenBtn, #cancelEditBtn').hide();
+        });
+
+        $('#cancelEditBtn').on('click', function () {
+            $('#editTokenNo').hide();
+            $('#tokenNoDisplay').show();
+            $('#editTokenBtn').show();
+            $('#saveTokenBtn, #cancelEditBtn').hide();
+        });
+    });
+
+    $(function () {
+        // Edit date and time functionality
+        $('#editDateTimeBtn').on('click', function () {
+            $('#dateTimeDisplay').hide();
+            let currentDate = new Date($('#dateTimeDisplay').text());
+            let formattedDate = currentDate.toISOString().slice(0, 16); // Format for datetime-local
+            $('#editDateTime').val(formattedDate).show();
+            $('#editDateTimeBtn').hide();
+            $('#saveDateTimeBtn, #cancelDateTimeEditBtn').show();
+        });
+
+        $('#saveDateTimeBtn').on('click', function () {
+            let newDateTime = new Date($('#editDateTime').val());
+            let formattedDate = newDateTime.toLocaleString('en-US', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true });
+            $('#dateTimeDisplay').text(formattedDate).show();
+            $('#editDateTime').hide();
+            $('#editDateTimeBtn').show();
+            $('#saveDateTimeBtn, #cancelDateTimeEditBtn').hide();
+        });
+
+        $('#cancelDateTimeEditBtn').on('click', function () {
+            $('#editDateTime').hide();
+            $('#dateTimeDisplay').show();
+            $('#editDateTimeBtn').show();
+            $('#saveDateTimeBtn, #cancelDateTimeEditBtn').hide();
+        });
+    });
+
+
+    $(function () {
+        // Edit room number functionality
+        $('#editRoomBtn').on('click', function () {
+            $('#roomNoDisplay').hide();
+            $('#editRoomNo').val($('#roomNoDisplay').text()).show();
+            $('#editRoomBtn').hide();
+            $('#saveRoomBtn, #cancelRoomEditBtn').show();
+        });
+
+        $('#saveRoomBtn').on('click', function () {
+            var newRoomNo = $('#editRoomNo').val();
+            $('#roomNoDisplay').text(newRoomNo).show();
+            $('#editRoomNo').hide();
+            $('#editRoomBtn').show();
+            $('#saveRoomBtn, #cancelRoomEditBtn').hide();
+        });
+
+        $('#cancelRoomEditBtn').on('click', function () {
+            $('#editRoomNo').hide();
+            $('#roomNoDisplay').show();
+            $('#editRoomBtn').show();
+            $('#saveRoomBtn, #cancelRoomEditBtn').hide();
+        });
+    });
+</script>

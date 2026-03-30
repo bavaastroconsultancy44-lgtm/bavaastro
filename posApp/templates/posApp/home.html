@@ -1,0 +1,188 @@
+{% extends "posApp/base.html" %} {% load humanize %} {% block pageContent %}
+<div class="mdc-layout-grid__cell stretch-card mdc-layout-grid__cell--span-12">
+    <div class="mdc-card">
+        <div class="d-flex justify-content-between">
+            <h4 class="card-title mb-0">Home Page</h4>
+        </div>
+    </div>
+</div>
+<!-- <div class="mdc-layout-grid__cell stretch-card mdc-layout-grid__cell--span-12">
+    <hr class="w-100">
+</div> -->
+<div class="mdc-layout-grid__cell stretch-card mdc-layout-grid__cell--span-3-desktop mdc-layout-grid__cell--span-3-tablet">
+    <div class="mdc-card info-card info-card--success">
+        <div class="card-inner">
+            <h5 class="card-title">Token Numbers</h5>
+            <ul>
+                {% for item in token_counts_by_product %}
+                    <li>
+                        <strong>{{ item.items__product_id__name }}</strong>: {{ item.token_count }}
+                    </li>
+                {% empty %}
+                    <li>No tokens generated today.</li>
+                {% endfor %}
+            </ul>
+            <p class="tx-12 text-muted">Token counts for today</p>
+            <div class="card-icon-wrapper">
+                <i class="material-icons">confirmation_number</i>
+            </div>
+        </div>
+    </div>
+</div>
+<div class="mdc-layout-grid__cell stretch-card mdc-layout-grid__cell--span-3-desktop mdc-layout-grid__cell--span-3-tablet">
+    <div class="mdc-card info-card info-card--info">
+        <div class="card-inner">
+            <h5 class="card-title">Today's Transactions</h5>
+            <h5 class="font-weight-light pb-2 mb-1 border-bottom">{{ transaction|intcomma }}</h5>
+            <p class="tx-12 text-muted">Over All Count of Today's Transactions</p>
+            <div class="card-icon-wrapper">
+                <i class="material-icons">receipt</i>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="mdc-layout-grid__cell stretch-card mdc-layout-grid__cell--span-3-desktop mdc-layout-grid__cell--span-3-tablet">
+    <div class="mdc-card info-card info-card--warning">
+        <div class="card-inner">
+            <h5 class="card-title">Total Sales Today</h5>
+            <h5 class="font-weight-light pb-2 mb-1 border-bottom">{{ total_sales|intcomma }}</h5>
+            <p class="tx-12 text-muted">All Payment Methods</p>
+            <div class="card-icon-wrapper">
+                <i class="mdi mdi-cash-multiple"></i>
+            </div>
+        </div>
+    </div>
+</div>
+<br>
+<br>
+<!-- Total Sales by Cash -->
+<div class="mdc-layout-grid__cell stretch-card mdc-layout-grid__cell--span-3-desktop mdc-layout-grid__cell--span-3-tablet">
+    <div class="mdc-card info-card info-card--success">
+        <div class="card-inner">
+            <h5 class="card-title">Cash Sales</h5>
+            <h5 class="font-weight-light pb-2 mb-1 border-bottom">{{ total_sales_cash|intcomma }}</h5>
+            <p class="tx-12 text-muted">Sales via Cash</p>
+            <div class="card-icon-wrapper">
+                <i class="mdi mdi-cash"></i>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Total Sales by Card -->
+<div class="mdc-layout-grid__cell stretch-card mdc-layout-grid__cell--span-3-desktop mdc-layout-grid__cell--span-3-tablet">
+    <div class="mdc-card info-card info-card--primary">
+        <div class="card-inner">
+            <h5 class="card-title">Card Sales</h5>
+            <h5 class="font-weight-light pb-2 mb-1 border-bottom">{{ total_sales_card|intcomma }}</h5>
+            <p class="tx-12 text-muted">Sales via Card</p>
+            <div class="card-icon-wrapper">
+                <i class="mdi mdi-credit-card"></i>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Total Sales by GPay -->
+<div class="mdc-layout-grid__cell stretch-card mdc-layout-grid__cell--span-3-desktop mdc-layout-grid__cell--span-3-tablet">
+    <div class="mdc-card info-card info-card--info">
+        <div class="card-inner">
+            <h5 class="card-title">GPay Sales</h5>
+            <h5 class="font-weight-light pb-2 mb-1 border-bottom">{{ total_sales_gpay|intcomma }}</h5>
+            <p class="tx-12 text-muted">Sales via GPay</p>
+            <div class="card-icon-wrapper">
+                <i class="mdi mdi-wallet"></i>
+            </div>
+        </div>
+    </div>
+</div>
+<br>
+<!-- Room 1 Token Counts -->
+<div class="mdc-layout-grid__cell stretch-card mdc-layout-grid__cell--span-3-desktop mdc-layout-grid__cell--span-3-tablet">
+    <div class="mdc-card info-card info-card--info">
+        <div class="card-inner">
+            <h5 class="card-title">Room No: 1 <br><span style="color: green;">ABDUL JABAR</span></h5>
+            <h5 class="font-weight-light pb-2 mb-1 border-bottom">{{ room_1_attendance }}</h5>
+            <p class="tx-12 text-muted">Attendees Today for Room 1</p>
+            <h5 class="card-title">Token Numbers</h5>
+            <ul>
+                {% for item in room_1_token_counts %}
+                    <li>
+                        <strong>{{ item.items__product_id__name }}</strong>: {{ item.token_count }}
+                    </li>
+                {% empty %}
+                    <li>No tokens generated today.</li>
+                {% endfor %}
+            </ul>
+        </div>
+    </div>
+</div>
+
+<!-- Room 2 Token Counts -->
+<div class="mdc-layout-grid__cell stretch-card mdc-layout-grid__cell--span-3-desktop mdc-layout-grid__cell--span-3-tablet">
+    <div class="mdc-card info-card info-card--info">
+        <div class="card-inner">
+            <h5 class="card-title">Room No: 2 <br><span style="color: green;">JAYAKUMAR</span></h5>
+            <h5 class="font-weight-light pb-2 mb-1 border-bottom">{{ room_2_attendance }}</h5>
+            <p class="tx-12 text-muted">Attendees Today for Room 2</p>
+            <h5 class="card-title">Token Numbers</h5>
+            <ul>
+                {% for item in room_2_token_counts %}
+                    <li>
+                        <strong>{{ item.items__product_id__name }}</strong>: {{ item.token_count }}
+                    </li>
+                {% empty %}
+                    <li>No tokens generated today.</li>
+                {% endfor %}
+            </ul>
+        </div>
+    </div>
+</div>
+
+<!-- Room 3 Token Counts -->
+<div class="mdc-layout-grid__cell stretch-card mdc-layout-grid__cell--span-3-desktop mdc-layout-grid__cell--span-3-tablet">
+    <div class="mdc-card info-card info-card--info">
+        <div class="card-inner">
+            <h5 class="card-title">Room No: 3 <br><span style="color: green;">BASHEER AHAMED</span></h5>
+            <h5 class="font-weight-light pb-2 mb-1 border-bottom">{{ room_3_attendance }}</h5>
+            <p class="tx-12 text-muted">Attendees Today for Room 3</p>
+            <h5 class="card-title">Token Numbers</h5>
+            <ul>
+                {% for item in room_3_token_counts %}
+                    <li>
+                        <strong>{{ item.items__product_id__name }}</strong>: {{ item.token_count }}
+                    </li>
+                {% empty %}
+                    <li>No tokens generated today.</li>
+                {% endfor %}
+            </ul>
+        </div>
+    </div>
+</div>
+
+<!-- Room 4 Token Counts -->
+<div class="mdc-layout-grid__cell stretch-card mdc-layout-grid__cell--span-3-desktop mdc-layout-grid__cell--span-3-tablet">
+    <div class="mdc-card info-card info-card--info">
+        <div class="card-inner">
+            <h5 class="card-title">Room No: 4 <br><span style="color: green;">IMRAN</span></h5>
+            <h5 class="font-weight-light pb-2 mb-1 border-bottom">{{ room_4_attendance }}</h5>
+            <p class="tx-12 text-muted">Attendees Today for Room 4</p>
+            <h5 class="card-title">Token Numbers</h5>
+            <ul>
+                {% for item in room_4_token_counts %}
+                    <li>
+                        <strong>{{ item.items__product_id__name }}</strong>: {{ item.token_count }}
+                    </li>
+                {% empty %}
+                    <li>No tokens generated today.</li>
+                {% endfor %}
+            </ul>
+        </div>
+    </div>
+</div>
+
+
+
+
+{% endblock pageContent %}
