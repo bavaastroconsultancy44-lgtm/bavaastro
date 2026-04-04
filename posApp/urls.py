@@ -52,4 +52,7 @@ urlpatterns = [
     # path('save_employee', views.save_employee, name="save-employee-page"),
     # path('delete_employee', views.delete_employee, name="delete-employee"),
     # path('view_employee', views.view_employee, name="view-employee-page"),
+    path('bulk-upload', views.bulk_upload, name="bulk-upload"),
+    path('export-bulk-data', views.export_bulk_data, name="export-bulk-data"),
+    path('import-bulk-data', views.import_bulk_data, name="import-bulk-data"),
 ]

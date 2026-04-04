@@ -1,0 +1,421 @@
+{% extends "posApp/base.html" %}
+{% block pageContent %}
+<style>
+    .upload-container {
+        padding: 30px;
+        border-radius: 8px;
+        background: #f8f9fa;
+    }
+    
+    .upload-section {
+        margin-bottom: 40px;
+    }
+    
+    .upload-section h5 {
+        margin-bottom: 20px;
+        font-weight: 600;
+        color: #333;
+    }
+    
+    .btn-upload, .btn-download {
+        padding: 10px 25px;
+        font-weight: 600;
+        border-radius: 5px;
+        transition: all 0.3s ease;
+    }
+    
+    .btn-download {
+        background-color: #28a745;
+        color: white;
+        border: none;
+    }
+    
+    .btn-download:hover {
+        background-color: #218838;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+    }
+    
+    .btn-upload {
+        background-color: #007bff;
+        color: white;
+        border: none;
+    }
+    
+    .btn-upload:hover {
+        background-color: #0056b3;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+    }
+    
+    .file-input-wrapper {
+        position: relative;
+        display: inline-block;
+    }
+    
+    .file-input-wrapper input[type="file"] {
+        display: none;
+    }
+    
+    .file-name {
+        margin-left: 10px;
+        color: #666;
+        font-weight: 500;
+    }
+    
+    .progress-container {
+        display: none;
+        margin-top: 20px;
+    }
+    
+    .progress-container.show {
+        display: block;
+    }
+    
+    .progress {
+        height: 25px;
+        background-color: #e9ecef;
+        border-radius: 5px;
+        overflow: hidden;
+    }
+    
+    .progress-bar {
+        height: 100%;
+        background-color: #007bff;
+        width: 0%;
+        transition: width 0.6s ease;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-weight: bold;
+        font-size: 12px;
+    }
+    
+    .alert {
+        border-radius: 5px;
+        padding: 15px;
+        margin-top: 15px;
+    }
+    
+    .alert-success {
+        background-color: #d4edda;
+        color: #155724;
+        border: 1px solid #c3e6cb;
+    }
+    
+    .alert-danger {
+        background-color: #f8d7da;
+        color: #721c24;
+        border: 1px solid #f5c6cb;
+    }
+    
+    .alert-warning {
+        background-color: #fff3cd;
+        color: #856404;
+        border: 1px solid #ffeaa7;
+    }
+    
+    .import-summary {
+        margin-top: 20px;
+        display: none;
+    }
+    
+    .import-summary.show {
+        display: block;
+    }
+    
+    .summary-table {
+        width: 100%;
+        border-collapse: collapse;
+        background: white;
+        border-radius: 5px;
+        overflow: hidden;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    
+    .summary-table th {
+        background-color: #007bff;
+        color: white;
+        padding: 12px;
+        text-align: left;
+        font-weight: 600;
+    }
+    
+    .summary-table td {
+        padding: 10px 12px;
+        border-bottom: 1px solid #e9ecef;
+    }
+    
+    .summary-table tr:hover {
+        background-color: #f5f5f5;
+    }
+    
+    .info-box {
+        background-color: #e3f2fd;
+        border-left: 4px solid #2196f3;
+        padding: 15px;
+        margin-bottom: 20px;
+        border-radius: 5px;
+        color: #1565c0;
+    }
+    
+    .spinner {
+        display: inline-block;
+        width: 14px;
+        height: 14px;
+        border: 2px solid #f3f3f3;
+        border-top: 2px solid #007bff;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+    }
+    
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+</style>
+
+<div class="mdc-layout-grid__cell stretch-card mdc-layout-grid__cell--span-12">
+    <div class="mdc-card upload-container">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h4 class="card-title mb-0">Bulk Upload / Export</h4>
+        </div>
+
+        <div class="info-box">
+            <strong>ℹ️ About Bulk Upload/Export:</strong>
+            <p style="margin: 8px 0 0 0; font-size: 14px;">
+                Export all your data as a JSON file for backup or transfer between systems. 
+                Import previously exported JSON files to restore data to the database.
+            </p>
+        </div>
+
+        <!-- Export Section -->
+        <div class="upload-section">
+            <h5>📥 Export Data</h5>
+            <p style="color: #666; margin-bottom: 15px;">
+                Download all application data as a JSON file. This creates a complete backup of all records.
+            </p>
+            <button class="btn btn-download" id="exportBtn" onclick="exportData()">
+                <i class="fas fa-download"></i> Download Data (JSON)
+            </button>
+        </div>
+
+        <hr>
+
+        <!-- Import Section -->
+        <div class="upload-section">
+            <h5>📤 Import Data</h5>
+            <p style="color: #666; margin-bottom: 15px;">
+                Upload a previously exported JSON file to restore all data to the database.
+            </p>
+            
+            <div class="file-input-wrapper">
+                <input type="file" id="fileInput" accept=".json" onchange="handleFileSelect(event)">
+                <button class="btn btn-upload" onclick="document.getElementById('fileInput').click()">
+                    <i class="fas fa-upload"></i> Choose JSON File
+                </button>
+                <span class="file-name" id="fileName"></span>
+            </div>
+
+            <div class="progress-container" id="progressContainer">
+                <div style="margin-bottom: 10px; font-weight: 500;">Uploading...</div>
+                <div class="progress">
+                    <div class="progress-bar" id="progressBar" style="width: 0%;">0%</div>
+                </div>
+            </div>
+
+            <div id="importMessage"></div>
+            <div class="import-summary" id="importSummary"></div>
+        </div>
+    </div>
+</div>
+
+<script>
+    let selectedFile = null;
+
+    function handleFileSelect(event) {
+        selectedFile = event.target.files[0];
+        const fileName = document.getElementById('fileName');
+        const importMessage = document.getElementById('importMessage');
+        
+        if (selectedFile) {
+            fileName.textContent = `Selected: ${selectedFile.name}`;
+            
+            // Validate file type
+            if (!selectedFile.name.endsWith('.json')) {
+                showMessage('Please select a valid JSON file.', 'danger');
+                selectedFile = null;
+                fileName.textContent = '';
+                return;
+            }
+            
+            // Validate file size (max 50MB)
+            if (selectedFile.size > 50 * 1024 * 1024) {
+                showMessage('File size exceeds 50MB limit.', 'danger');
+                selectedFile = null;
+                fileName.textContent = '';
+                return;
+            }
+            
+            showMessage(`File ready: ${selectedFile.name}. Click "Upload" to import.`, 'warning');
+            
+            // Show upload button if not already visible
+            setTimeout(() => {
+                importData();
+            }, 500);
+        } else {
+            fileName.textContent = '';
+        }
+    }
+
+    function exportData() {
+        const exportBtn = document.getElementById('exportBtn');
+        const originalText = exportBtn.innerHTML;
+        
+        exportBtn.disabled = true;
+        exportBtn.innerHTML = '<span class="spinner"></span> Exporting...';
+
+        fetch('{% url "export-bulk-data" %}')
+            .then(response => {
+                if (!response.ok) {
+                    return response.json().then(data => {
+                        throw new Error(data.msg || 'Export failed');
+                    });
+                }
+                return response.blob().then(blob => ({
+                    blob: blob,
+                    filename: response.headers.get('Content-Disposition')
+                }));
+            })
+            .then(({blob, filename}) => {
+                const url = window.URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                link.href = url;
+                
+                // Extract filename from Content-Disposition header or use default with timestamp
+                if (filename && filename.includes('filename=')) {
+                    link.download = filename.split('filename=')[1].replace(/"/g, '');
+                } else {
+                    link.download = `pos_data_export_${new Date().toISOString().slice(0, 10)}.json`;
+                }
+                
+                document.body.appendChild(link);
+                link.click();
+                window.URL.revokeObjectURL(url);
+                document.body.removeChild(link);
+                
+                showMessage('Data exported successfully!', 'success');
+                exportBtn.disabled = false;
+                exportBtn.innerHTML = originalText;
+            })
+            .catch(error => {
+                console.error('Export error:', error);
+                showMessage(`Export failed: ${error.message}`, 'danger');
+                exportBtn.disabled = false;
+                exportBtn.innerHTML = originalText;
+            });
+    }
+
+    function importData() {
+        if (!selectedFile) {
+            showMessage('Please select a file first.', 'warning');
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append('file', selectedFile);
+        formData.append('csrfmiddlewaretoken', getCookie('csrftoken'));
+
+        const progressContainer = document.getElementById('progressContainer');
+        const progressBar = document.getElementById('progressBar');
+        const importMessage = document.getElementById('importMessage');
+
+        progressContainer.classList.add('show');
+        progressBar.style.width = '25%';
+
+        fetch('{% url "import-bulk-data" %}', {
+            method: 'POST',
+            body: formData
+        })
+            .then(response => {
+                progressBar.style.width = '75%';
+                return response.json();
+            })
+            .then(data => {
+                progressBar.style.width = '100%';
+                
+                if (data.status === 'success') {
+                    showMessage(data.msg, 'success');
+                    displayImportSummary(data.imported, data.errors);
+                    
+                    // Reset file input
+                    document.getElementById('fileInput').value = '';
+                    document.getElementById('fileName').textContent = '';
+                    selectedFile = null;
+                } else {
+                    showMessage(data.msg || 'Import failed', 'danger');
+                }
+                
+                setTimeout(() => {
+                    progressContainer.classList.remove('show');
+                    progressBar.style.width = '0%';
+                }, 1000);
+            })
+            .catch(error => {
+                console.error('Import error:', error);
+                showMessage(`Import failed: ${error.message}`, 'danger');
+                progressContainer.classList.remove('show');
+                progressBar.style.width = '0%';
+            });
+    }
+
+    function displayImportSummary(imported, errors) {
+        const summaryDiv = document.getElementById('importSummary');
+        
+        let html = '<h6 style="margin-top: 20px; margin-bottom: 15px; font-weight: 600;">Import Summary:</h6>';
+        html += '<table class="summary-table">';
+        html += '<thead><tr><th>Category</th><th>Records Imported</th></tr></thead>';
+        html += '<tbody>';
+        
+        for (const [key, value] of Object.entries(imported)) {
+            const label = key.charAt(0).toUpperCase() + key.slice(1).replace(/_/g, ' ');
+            html += `<tr><td>${label}</td><td><strong>${value}</strong></td></tr>`;
+        }
+        
+        html += '</tbody></table>';
+        
+        if (errors && errors.length > 0) {
+            html += '<div class="alert alert-warning" style="margin-top: 15px;">';
+            html += '<strong>⚠️ Warnings:</strong><ul style="margin: 10px 0 0 20px;">';
+            errors.forEach(error => {
+                html += `<li>${error}</li>`;
+            });
+            html += '</ul></div>';
+        }
+        
+        summaryDiv.innerHTML = html;
+        summaryDiv.classList.add('show');
+    }
+
+    function showMessage(message, type) {
+        const messageDiv = document.getElementById('importMessage');
+        messageDiv.innerHTML = `<div class="alert alert-${type}">${message}</div>`;
+    }
+
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+</script>
+{% endblock pageContent %}

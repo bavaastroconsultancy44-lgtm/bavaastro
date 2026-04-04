@@ -70,6 +70,12 @@
                             aria-hidden="true">event</i> Attendance
                     </a>
                 </div>
+                <div class="mdc-list-item mdc-drawer-item">
+                    <a class="mdc-drawer-link" href="{% url 'bulk-upload' %}">
+                        <i class="material-icons mdc-list-item__start-detail mdc-drawer-item-icon"
+                            aria-hidden="true">cloud_upload</i> Bulk Upload
+                    </a>
+                </div>
                 {% endif %}
                 {% endfor %}
             </nav>

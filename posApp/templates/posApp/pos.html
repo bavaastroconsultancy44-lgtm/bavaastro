@@ -72,9 +72,9 @@
                     </div>
                 </div>
                 <hr>
-                <div class="row mt-3">
-                    <div class="col-lg-4 col-md-4 col-sm-12 me-2">
-                        <div class="form-group mb-3">
+                <div class="row mt-3 align-items-end">
+                    <div class="col-lg-3 col-md-3 col-sm-12">
+                        <div class="form-group mb-0">
                             <label for="room-no">Room Number</label>
                             <select class="form-control rounded-0" id="room-no" name="room_no">
                                 <option value="1">1</option>
@@ -84,8 +84,39 @@
                             </select>
                         </div>
                     </div>
+                    <div class="col-lg-9 col-md-9 col-sm-12 ps-2">
+                        <button class="btn btn-primary btn-sm rounded-0 me-2" type="button" id="add_item">
+                            <span style="font-weight: bold; margin-right: 4px;">+</span>Add Item
+                        </button>
+                        <button class="btn btn-primary btn-sm rounded-0" type="button" id="check_out">
+                            <i class="mdi mdi-save"></i> Print Receipt
+                        </button>
+                    </div>
+                </div>
+                <div class="row mt-3">
+                    <div class="col-lg-3 col-md-4 col-sm-12">
+                        <div class="form-group mb-3">
+                            <label>Payment Method</label><br>
+                            <div class="form-check form-check-inline">
+                                <input class="form-check-input" type="radio" name="payment_method" id="payment-cash"
+                                    value="cash" checked>
+                                <label class="form-check-label" for="payment-cash">Cash</label>
+                            </div>
+                            <div class="form-check form-check-inline">
+                                <input class="form-check-input" type="radio" name="payment_method" id="payment-card"
+                                    value="card">
+                                <label class="form-check-label" for="payment-card">Card</label>
+                            </div>
+                            <div class="form-check form-check-inline">
+                                <input class="form-check-input" type="radio" name="payment_method" id="payment-gpay"
+                                    value="gpay">
+                                <label class="form-check-label" for="payment-gpay">GPay</label>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </fieldset>
+            <hr>
             <fieldset>
                 <div class="d-flex w-100" id="POS-field">
                     <div class="col-8 bg-gradient bg-light border h-50">
@@ -141,40 +172,7 @@
                     </div>
                 </div>
             </fieldset>
-            <div class="row" style="margin-top: -190px;">
-                <div class="col-md-12 text-end">
-                    <button class="btn btn-primary btn-sm rounded-0 me-2" type="button" id="add_item">
-                        <span style="font-weight: bold; margin-right: 4px;">+</span>Add Item
-                    </button>
-                    <button class="btn btn-primary btn-sm rounded-0" type="button" id="check_out">
-                        <i class="mdi mdi-save"></i> Print Receipt
-                    </button>
-                </div>
-            </div>        
-            <div class="col-lg-3 col-md-4 col-sm-12">
-                <div class="form-group mb-3">
-                    <label>Payment Method</label><br>
-                    <div class="form-check form-check-inline">
-                        <input class="form-check-input" type="radio" name="payment_method" id="payment-cash"
-                            value="cash" checked>
-                        <label class="form-check-label" for="payment-cash">Cash</label>
-                    </div>
-                    <div class="form-check form-check-inline">
-                        <input class="form-check-input" type="radio" name="payment_method" id="payment-card"
-                            value="card">
-                        <label class="form-check-label" for="payment-card">Card</label>
-                    </div>
-                    <div class="form-check form-check-inline">
-                        <input class="form-check-input" type="radio" name="payment_method" id="payment-gpay"
-                            value="gpay">
-                        <label class="form-check-label" for="payment-gpay">GPay</label>
-                    </div>
-                </div>
-            </div>
-        </form>
-    </div>
-</div>
-<noscript id="item-clone">
+            <noscript id="item-clone">
     <tr>
         <td class="px-2 py-1 text-center">
             <button class="btn btn-sm btn-outline-danger rounded-0 rem-item" type="button"><i

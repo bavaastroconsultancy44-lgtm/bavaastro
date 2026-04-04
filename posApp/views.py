@@ -5,7 +5,7 @@ import sys
 import io
 from django.shortcuts import get_object_or_404, redirect, render
 from django.http import HttpResponse, JsonResponse
-from posApp.models import Category, Employee, Products, Sales, salesItems, Customer, WeeklyDebit
+from posApp.models import Category, Employee, Products, Sales, salesItems, Customer, WeeklyDebit, Attendance
 from django.db.models import Count, Sum
 from django.contrib import messages
 from django.contrib.auth import authenticate, login, logout
@@ -2864,5 +2864,338 @@ def attendance(request):
         'selected_week': weeks_offset,
     }
     return render(request, 'posApp/attendance.html', context)
+
+@cache_control(no_cache=True, must_revalidate=True, no_store=True)
+@login_required()
+def bulk_upload(request):
+    user_groups = request.user.groups.all()
+    u = request.user
+    
+    context = {
+        'page_title': 'Bulk Upload/Export',
+        'user_groups': user_groups,
+        'u': u,
+    }
+    return render(request, 'posApp/bulk_upload.html', context)
+
+
+@cache_control(no_cache=True, must_revalidate=True, no_store=True)
+@login_required()
+def export_bulk_data(request):
+    """Export all data from models as JSON"""
+    try:
+        data = {
+            'categories': [],
+            'products': [],
+            'employees': [],
+            'customers': [],
+            'sales': [],
+            'sales_items': [],
+            'weekly_debits': [],
+            'attendance': [],
+        }
+        
+        # Export Categories
+        for category in Category.objects.all():
+            data['categories'].append({
+                'id': category.id,
+                'name': category.name,
+                'status': category.status,
+                'date_added': category.date_added.isoformat(),
+                'date_updated': category.date_updated.isoformat(),
+            })
+        
+        # Export Products
+        for product in Products.objects.all():
+            data['products'].append({
+                'id': product.id,
+                'category_id': product.category_id.id,
+                'name': product.name,
+                'price': product.price,
+                'status': product.status,
+                'date_added': product.date_added.isoformat(),
+                'date_updated': product.date_updated.isoformat(),
+            })
+        
+        # Export Employees
+        for employee in Employee.objects.all():
+            data['employees'].append({
+                'id': employee.id,
+                'name': employee.name,
+                'phone_number': employee.phone_number,
+                'position': employee.position,
+                'daily_wage': float(employee.daily_wage),
+            })
+        
+        # Export Customers
+        for customer in Customer.objects.all():
+            data['customers'].append({
+                'id': customer.id,
+                'name': customer.name,
+                'phone_number': customer.phone_number,
+                'city': customer.city,
+            })
+        
+        # Export Sales
+        for sale in Sales.objects.all():
+            data['sales'].append({
+                'id': sale.id,
+                'customer_name': sale.customer_name,
+                'customer_phone': sale.customer_phone,
+                'customer_city': sale.customer_city,
+                'payment_method': sale.payment_method,
+                'sub_total': sale.sub_total,
+                'grand_total': sale.grand_total,
+                'room_no': sale.room_no,
+                'date_added': sale.date_added.isoformat(),
+                'token_no': sale.token_no,
+                'raw_token_no': sale.raw_token_no,
+                'serial_no': sale.serial_no,
+            })
+        
+        # Export Sales Items
+        for item in salesItems.objects.all():
+            data['sales_items'].append({
+                'id': item.id,
+                'sale_id': item.sale_id.id,
+                'product_id': item.product_id.id,
+                'price': item.price,
+                'qty': item.qty,
+                'total': item.total,
+            })
+        
+        # Export Weekly Debits
+        for debit in WeeklyDebit.objects.all():
+            data['weekly_debits'].append({
+                'id': debit.id,
+                'week_number': debit.week_number,
+                'week_start_date': debit.week_start_date.isoformat(),
+                'description': debit.description,
+                'amount': float(debit.amount),
+                'date_added': debit.date_added.isoformat(),
+            })
+        
+        # Export Attendance
+        for attendance in Attendance.objects.all():
+            data['attendance'].append({
+                'id': attendance.id,
+                'employee_id': attendance.employee.id,
+                'date': attendance.date.isoformat(),
+                'present': attendance.present,
+                'date_added': attendance.date_added.isoformat(),
+            })
+        
+        # Create response
+        response = HttpResponse(
+            json.dumps(data, indent=2),
+            content_type='application/json'
+        )
+        export_date = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
+        response['Content-Disposition'] = f'attachment; filename="pos_data_export_{export_date}.json"'
+        return response
+        
+    except Exception as e:
+        return JsonResponse({
+            'status': 'failed',
+            'msg': f'Export failed: {str(e)}'
+        }, status=400)
+
+
+@cache_control(no_cache=True, must_revalidate=True, no_store=True)
+@login_required()
+def import_bulk_data(request):
+    """Import data from JSON file and save to database"""
+    if request.method != 'POST':
+        return JsonResponse({'status': 'failed', 'msg': 'Invalid request method'}, status=400)
+    
+    try:
+        if 'file' not in request.FILES:
+            return JsonResponse({'status': 'failed', 'msg': 'No file provided'}, status=400)
+        
+        file = request.FILES['file']
+        
+        if not file.name.endswith('.json'):
+            return JsonResponse({'status': 'failed', 'msg': 'Only JSON files are allowed'}, status=400)
+        
+        # Read and parse JSON
+        file_content = file.read().decode('utf-8')
+        data = json.loads(file_content)
+        
+        # Track imported records
+        imported_count = {
+            'categories': 0,
+            'products': 0,
+            'employees': 0,
+            'customers': 0,
+            'sales': 0,
+            'sales_items': 0,
+            'weekly_debits': 0,
+            'attendance': 0,
+        }
+        
+        errors = []
+        
+        # Import Categories
+        try:
+            for item in data.get('categories', []):
+                Category.objects.update_or_create(
+                    id=item['id'],
+                    defaults={
+                        'name': item['name'],
+                        'status': item['status'],
+                        'date_added': item['date_added'],
+                        'date_updated': item['date_updated'],
+                    }
+                )
+                imported_count['categories'] += 1
+        except Exception as e:
+            errors.append(f'Category import error: {str(e)}')
+        
+        # Import Products
+        try:
+            for item in data.get('products', []):
+                category = Category.objects.get(id=item['category_id'])
+                Products.objects.update_or_create(
+                    id=item['id'],
+                    defaults={
+                        'category_id': category,
+                        'name': item['name'],
+                        'price': item['price'],
+                        'status': item['status'],
+                        'date_added': item['date_added'],
+                        'date_updated': item['date_updated'],
+                    }
+                )
+                imported_count['products'] += 1
+        except Exception as e:
+            errors.append(f'Product import error: {str(e)}')
+        
+        # Import Employees
+        try:
+            for item in data.get('employees', []):
+                Employee.objects.update_or_create(
+                    id=item['id'],
+                    defaults={
+                        'name': item['name'],
+                        'phone_number': item['phone_number'],
+                        'position': item['position'],
+                        'daily_wage': item['daily_wage'],
+                    }
+                )
+                imported_count['employees'] += 1
+        except Exception as e:
+            errors.append(f'Employee import error: {str(e)}')
+        
+        # Import Customers
+        try:
+            for item in data.get('customers', []):
+                Customer.objects.update_or_create(
+                    id=item['id'],
+                    defaults={
+                        'name': item['name'],
+                        'phone_number': item['phone_number'],
+                        'city': item.get('city', ''),
+                    }
+                )
+                imported_count['customers'] += 1
+        except Exception as e:
+            errors.append(f'Customer import error: {str(e)}')
+        
+        # Import Sales
+        try:
+            for item in data.get('sales', []):
+                Sales.objects.update_or_create(
+                    id=item['id'],
+                    defaults={
+                        'customer_name': item['customer_name'],
+                        'customer_phone': item['customer_phone'],
+                        'customer_city': item['customer_city'],
+                        'payment_method': item['payment_method'],
+                        'sub_total': item['sub_total'],
+                        'grand_total': item['grand_total'],
+                        'room_no': item['room_no'],
+                        'token_no': item['token_no'],
+                        'raw_token_no': item.get('raw_token_no'),
+                        'serial_no': item.get('serial_no', 1),
+                        'date_added': item['date_added'],
+                    }
+                )
+                imported_count['sales'] += 1
+        except Exception as e:
+            errors.append(f'Sales import error: {str(e)}')
+        
+        # Import Sales Items
+        try:
+            for item in data.get('sales_items', []):
+                sale = Sales.objects.get(id=item['sale_id'])
+                product = Products.objects.get(id=item['product_id'])
+                salesItems.objects.update_or_create(
+                    id=item['id'],
+                    defaults={
+                        'sale_id': sale,
+                        'product_id': product,
+                        'price': item['price'],
+                        'qty': item['qty'],
+                        'total': item['total'],
+                    }
+                )
+                imported_count['sales_items'] += 1
+        except Exception as e:
+            errors.append(f'Sales Items import error: {str(e)}')
+        
+        # Import Weekly Debits
+        try:
+            for item in data.get('weekly_debits', []):
+                WeeklyDebit.objects.update_or_create(
+                    id=item['id'],
+                    defaults={
+                        'week_number': item['week_number'],
+                        'week_start_date': item['week_start_date'],
+                        'description': item['description'],
+                        'amount': item['amount'],
+                        'date_added': item['date_added'],
+                    }
+                )
+                imported_count['weekly_debits'] += 1
+        except Exception as e:
+            errors.append(f'Weekly Debit import error: {str(e)}')
+        
+        # Import Attendance
+        try:
+            for item in data.get('attendance', []):
+                employee = Employee.objects.get(id=item['employee_id'])
+                Attendance.objects.update_or_create(
+                    id=item['id'],
+                    defaults={
+                        'employee': employee,
+                        'date': item['date'],
+                        'present': item['present'],
+                        'date_added': item['date_added'],
+                    }
+                )
+                imported_count['attendance'] += 1
+        except Exception as e:
+            errors.append(f'Attendance import error: {str(e)}')
+        
+        return JsonResponse({
+            'status': 'success',
+            'msg': 'Data imported successfully',
+            'imported': imported_count,
+            'errors': errors if errors else None,
+        })
+        
+    except json.JSONDecodeError:
+        return JsonResponse({'status': 'failed', 'msg': 'Invalid JSON file'}, status=400)
+    except Exception as e:
+        return JsonResponse({'status': 'failed', 'msg': f'Import failed: {str(e)}'}, status=400)
+    user_groups = request.user.groups.all()
+    u = request.user
+    # Context to pass to the template
+    context = {
+        'user_groups': user_groups,
+        'u': u,
+    }
+    
+    return render(request, 'posApp/bulk_upload.html', context)
 
         
