@@ -11,6 +11,7 @@ from django.contrib import messages
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import redirect
+from django.views.decorators.csrf import csrf_exempt
 import json, sys
 from django.utils import timezone
 from django.db.models import Q
@@ -3002,13 +3003,17 @@ def export_bulk_data(request):
 
 
 @cache_control(no_cache=True, must_revalidate=True, no_store=True)
-@login_required()
+@csrf_exempt
 def import_bulk_data(request):
     """Import data from JSON file and save to database"""
-    if request.method != 'POST':
-        return JsonResponse({'status': 'failed', 'msg': 'Invalid request method'}, status=400)
-    
     try:
+        # Check authentication
+        if not request.user.is_authenticated:
+            return JsonResponse({'status': 'failed', 'msg': 'Authentication required'}, status=401)
+        
+        if request.method != 'POST':
+            return JsonResponse({'status': 'failed', 'msg': 'Invalid request method'}, status=400)
+        
         if 'file' not in request.FILES:
             return JsonResponse({'status': 'failed', 'msg': 'No file provided'}, status=400)
         
@@ -3038,35 +3043,43 @@ def import_bulk_data(request):
         # Import Categories
         try:
             for item in data.get('categories', []):
-                Category.objects.update_or_create(
-                    id=item['id'],
-                    defaults={
-                        'name': item['name'],
-                        'status': item['status'],
-                        'date_added': item['date_added'],
-                        'date_updated': item['date_updated'],
-                    }
-                )
-                imported_count['categories'] += 1
+                try:
+                    Category.objects.update_or_create(
+                        id=item['id'],
+                        defaults={
+                            'name': item['name'],
+                            'status': item['status'],
+                            'date_added': item['date_added'],
+                            'date_updated': item['date_updated'],
+                        }
+                    )
+                    imported_count['categories'] += 1
+                except Exception as item_error:
+                    errors.append(f'Category ID {item.get("id", "unknown")} error: {str(item_error)}')
         except Exception as e:
             errors.append(f'Category import error: {str(e)}')
         
         # Import Products
         try:
             for item in data.get('products', []):
-                category = Category.objects.get(id=item['category_id'])
-                Products.objects.update_or_create(
-                    id=item['id'],
-                    defaults={
-                        'category_id': category,
-                        'name': item['name'],
-                        'price': item['price'],
-                        'status': item['status'],
-                        'date_added': item['date_added'],
-                        'date_updated': item['date_updated'],
-                    }
-                )
-                imported_count['products'] += 1
+                try:
+                    category = Category.objects.get(id=item['category_id'])
+                    Products.objects.update_or_create(
+                        id=item['id'],
+                        defaults={
+                            'category_id': category,
+                            'name': item['name'],
+                            'price': item['price'],
+                            'status': item['status'],
+                            'date_added': item['date_added'],
+                            'date_updated': item['date_updated'],
+                        }
+                    )
+                    imported_count['products'] += 1
+                except Category.DoesNotExist:
+                    errors.append(f'Product ID {item.get("id", "unknown")}: Category {item.get("category_id")} not found')
+                except Exception as item_error:
+                    errors.append(f'Product ID {item.get("id", "unknown")} error: {str(item_error)}')
         except Exception as e:
             errors.append(f'Product import error: {str(e)}')
         
@@ -3104,42 +3117,52 @@ def import_bulk_data(request):
         # Import Sales
         try:
             for item in data.get('sales', []):
-                Sales.objects.update_or_create(
-                    id=item['id'],
-                    defaults={
-                        'customer_name': item['customer_name'],
-                        'customer_phone': item['customer_phone'],
-                        'customer_city': item['customer_city'],
-                        'payment_method': item['payment_method'],
-                        'sub_total': item['sub_total'],
-                        'grand_total': item['grand_total'],
-                        'room_no': item['room_no'],
-                        'token_no': item['token_no'],
-                        'raw_token_no': item.get('raw_token_no'),
-                        'serial_no': item.get('serial_no', 1),
-                        'date_added': item['date_added'],
-                    }
-                )
-                imported_count['sales'] += 1
+                try:
+                    Sales.objects.update_or_create(
+                        id=item['id'],
+                        defaults={
+                            'customer_name': item['customer_name'],
+                            'customer_phone': item['customer_phone'],
+                            'customer_city': item['customer_city'],
+                            'payment_method': item['payment_method'],
+                            'sub_total': item['sub_total'],
+                            'grand_total': item['grand_total'],
+                            'room_no': item['room_no'],
+                            'token_no': item['token_no'],
+                            'raw_token_no': item.get('raw_token_no'),
+                            'serial_no': item.get('serial_no', 1),
+                            'date_added': item['date_added'],
+                        }
+                    )
+                    imported_count['sales'] += 1
+                except Exception as item_error:
+                    errors.append(f'Sale ID {item.get("id", "unknown")} error: {str(item_error)}')
         except Exception as e:
             errors.append(f'Sales import error: {str(e)}')
         
         # Import Sales Items
         try:
             for item in data.get('sales_items', []):
-                sale = Sales.objects.get(id=item['sale_id'])
-                product = Products.objects.get(id=item['product_id'])
-                salesItems.objects.update_or_create(
-                    id=item['id'],
-                    defaults={
-                        'sale_id': sale,
-                        'product_id': product,
-                        'price': item['price'],
-                        'qty': item['qty'],
-                        'total': item['total'],
-                    }
-                )
-                imported_count['sales_items'] += 1
+                try:
+                    sale = Sales.objects.get(id=item['sale_id'])
+                    product = Products.objects.get(id=item['product_id'])
+                    salesItems.objects.update_or_create(
+                        id=item['id'],
+                        defaults={
+                            'sale_id': sale,
+                            'product_id': product,
+                            'price': item['price'],
+                            'qty': item['qty'],
+                            'total': item['total'],
+                        }
+                    )
+                    imported_count['sales_items'] += 1
+                except Sales.DoesNotExist:
+                    errors.append(f'Sales Item ID {item.get("id", "unknown")}: Sale {item.get("sale_id")} not found')
+                except Products.DoesNotExist:
+                    errors.append(f'Sales Item ID {item.get("id", "unknown")}: Product {item.get("product_id")} not found')
+                except Exception as item_error:
+                    errors.append(f'Sales Item ID {item.get("id", "unknown")} error: {str(item_error)}')
         except Exception as e:
             errors.append(f'Sales Items import error: {str(e)}')
         
@@ -3163,17 +3186,22 @@ def import_bulk_data(request):
         # Import Attendance
         try:
             for item in data.get('attendance', []):
-                employee = Employee.objects.get(id=item['employee_id'])
-                Attendance.objects.update_or_create(
-                    id=item['id'],
-                    defaults={
-                        'employee': employee,
-                        'date': item['date'],
-                        'present': item['present'],
-                        'date_added': item['date_added'],
-                    }
-                )
-                imported_count['attendance'] += 1
+                try:
+                    employee = Employee.objects.get(id=item['employee_id'])
+                    Attendance.objects.update_or_create(
+                        id=item['id'],
+                        defaults={
+                            'employee': employee,
+                            'date': item['date'],
+                            'present': item['present'],
+                            'date_added': item['date_added'],
+                        }
+                    )
+                    imported_count['attendance'] += 1
+                except Employee.DoesNotExist:
+                    errors.append(f'Attendance ID {item.get("id", "unknown")}: Employee {item.get("employee_id")} not found')
+                except Exception as item_error:
+                    errors.append(f'Attendance ID {item.get("id", "unknown")} error: {str(item_error)}')
         except Exception as e:
             errors.append(f'Attendance import error: {str(e)}')
         
