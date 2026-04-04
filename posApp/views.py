@@ -3177,6 +3177,16 @@ def import_bulk_data(request):
         except Exception as e:
             errors.append(f'Attendance import error: {str(e)}')
         
+        # Recalculate serial numbers for all sales to maintain correct order
+        try:
+            all_sales = Sales.objects.all().order_by('id')
+
+            for index, sale in enumerate(all_sales, start=1):
+                sale.serial_no = index
+                sale.save(update_fields=['serial_no'])
+        except Exception as e:
+            errors.append(f'Serial number recalculation error: {str(e)}')
+        
         return JsonResponse({
             'status': 'success',
             'msg': 'Data imported successfully',
@@ -3188,14 +3198,5 @@ def import_bulk_data(request):
         return JsonResponse({'status': 'failed', 'msg': 'Invalid JSON file'}, status=400)
     except Exception as e:
         return JsonResponse({'status': 'failed', 'msg': f'Import failed: {str(e)}'}, status=400)
-    user_groups = request.user.groups.all()
-    u = request.user
-    # Context to pass to the template
-    context = {
-        'user_groups': user_groups,
-        'u': u,
-    }
-    
-    return render(request, 'posApp/bulk_upload.html', context)
 
         
