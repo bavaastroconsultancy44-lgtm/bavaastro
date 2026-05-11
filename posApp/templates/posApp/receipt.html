@@ -150,12 +150,23 @@
 
         // Print function
         document.getElementById('receipt_print').addEventListener('click', function () {
-            var head = document.head.cloneNode(true);
-            var p = document.getElementById('outprint').cloneNode(true);
-            var el = document.createElement('div');
+            var headClone = document.head.cloneNode(true);
+            var printBody = document.getElementById('outprint').cloneNode(true);
+            var printWindow = window.open('', '_blank', "width=800,height=800,left=800,top=400");
 
-            // Set CSS for 3-inch thermal printing
-            head.innerHTML += `
+            if (!printWindow) {
+                alert('Unable to open print preview window. Please allow popups and try again.');
+                return;
+            }
+
+            var headHtml = headClone.innerHTML;
+            if (headHtml.indexOf('<title>') !== -1) {
+                headHtml = headHtml.replace(/<title>[\s\S]*?<\/title>/i, '<title>Receipt - Print View</title>');
+            } else {
+                headHtml = '<title>Receipt - Print View</title>' + headHtml;
+            }
+
+            headHtml += `
                 <style>
                     @media print {
                         @page {
@@ -170,32 +181,37 @@
                             font-size: 12px;
                         }
                         #outprint {
-                        padding-left: 5mm; /* Increase padding to prevent clipping */
-                        width: 70mm; /* Reduce width slightly to fit better */
-                        margin: 0;
-                        overflow: hidden; /* Ensure content stays within bounds */
+                            padding-left: 5mm;
+                            width: 70mm;
+                            margin: 0;
+                            overflow: hidden;
                         }
                     }
                 </style>
             `;
 
-            el.appendChild(head);
-            el.querySelector('title').textContent = "Receipt - Print View";
-            el.appendChild(p);
+            printWindow.document.open();
+            printWindow.document.write('<!DOCTYPE html><html>' + headHtml + '<body>' + printBody.outerHTML + '</body></html>');
+            printWindow.document.close();
 
-            var nw = window.open('', '_blank', "width=800,height=800,left=800, top=400");
-            nw.document.write(el.innerHTML);
-            nw.document.close();
-
-            // Trigger printing
-            setTimeout(() => {
-                nw.print();
-                setTimeout(() => {
-                    nw.close();
-                    // Redirect to POS page after printing
+            var printAndRedirect = function () {
+                try {
+                    printWindow.focus();
+                    printWindow.print();
+                } catch (err) {
+                    console.error('Print failed:', err);
+                }
+                setTimeout(function () {
+                    printWindow.close();
                     window.location.href = "{% url 'pos-page' %}";
-                }, 250);
-            }, 300);
+                }, 500);
+            };
+
+            if (printWindow.document.readyState === 'complete') {
+                printAndRedirect();
+            } else {
+                printWindow.onload = printAndRedirect;
+            }
         });
 
 
