@@ -16,6 +16,7 @@
             <thead>
                 <tr>
                     <th>S.No</th>
+                    <th>Order</th>
                     <th>Name</th>
                     <th>Phone</th>
                     <th>Position</th>
@@ -27,6 +28,7 @@
                 {% for emp in employees %}
                 <tr>
                     <td>{{ forloop.counter }}</td>
+                    <td>{{ emp.display_order }}</td>
                     <td>{{ emp.name }}</td>
                     <td>{{ emp.phone_number }}</td>
                     <td>{{ emp.position }}</td>
@@ -81,6 +83,10 @@
                     <input type="text" name="position" class="form-control" placeholder="Enter Position" required>
                 </div>
                 <div class="col-md-6">
+                    <label class="form-label">Display Order</label>
+                    <input type="number" name="display_order" class="form-control" placeholder="Enter order" value="0">
+                </div>
+                <div class="col-md-6">
                     <label class="form-label">Daily Wage</label>
                     <input type="number" step="0.01" name="daily_wage" class="form-control" placeholder="Enter Wage" required>
                 </div>
@@ -118,6 +124,10 @@
                 <div class="col-md-6">
                     <label class="form-label">Position</label>
                     <input type="text" name="position" class="form-control" placeholder="Enter Position" value="{{ emp.position }}" required>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Display Order</label>
+                    <input type="number" name="display_order" class="form-control" placeholder="Enter order" value="{{ emp.display_order|default:0 }}">
                 </div>
                 <div class="col-md-6">
                     <label class="form-label">Daily Wage</label>

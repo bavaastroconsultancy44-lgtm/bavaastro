@@ -72,14 +72,17 @@
                     <div class="card-body p-3">
                         <form id="add-debit-form" method="post" action="{% url 'add_weekly_debit' week_number %}" class="row g-2">
                             {% csrf_token %}
-                            <div class="col-7">
+                            <div class="col-5">
                                 <input type="text" class="form-control form-control-sm" id="description" name="description" placeholder="Description" required>
                             </div>
-                            <div class="col-5">
+                            <div class="col-3">
                                 <div class="input-group input-group-sm">
                                     <span class="input-group-text">₹</span>
                                     <input type="number" class="form-control" id="amount" name="amount" step="0.01" placeholder="Amount" required>
                                 </div>
+                            </div>
+                            <div class="col-4">
+                                <input type="date" class="form-control form-control-sm" id="debit_date" name="debit_date" required>
                             </div>
                             <div class="col-12 mt-2">
                                 <button type="submit" class="btn btn-sm btn-warning w-100">Add Debit</button>
@@ -242,6 +245,11 @@
                             <input type="number" class="form-control" id="amount{{ debit.id }}" 
                                    name="amount" step="0.01" value="{{ debit.amount }}" required>
                         </div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="debit_date{{ debit.id }}" class="form-label">Debit Date</label>
+                        <input type="date" class="form-control" id="debit_date{{ debit.id }}" 
+                               name="debit_date" value="{{ debit.debit_date|date:'Y-m-d' }}" required>
                     </div>
                 </div>
                 <div class="modal-footer">

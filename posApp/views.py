@@ -22,6 +22,7 @@ import openpyxl
 from openpyxl.utils import get_column_letter
 from datetime import timedelta, date
 from django.core.mail import EmailMessage
+from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 
 
 # Login
@@ -513,12 +514,48 @@ def salesList(request):
     # Apply ordering to the filtered queryset
     sales = sales.order_by('-date_added')
     
+    # Check if download is requested (before pagination)
+    if 'download' in request.GET:
+        sale_data = []
+        for sale in sales:
+            data = {}
+            for field in sale._meta.get_fields(include_parents=False):
+                if field.related_model is None:
+                    data[field.name] = getattr(sale, field.name)
+            data['items'] = salesItems.objects.filter(sale_id=sale).all()
+            data['item_count'] = len(data['items'])
+            if 'tax_amount' in data:
+                data['tax_amount'] = format(float(data['tax_amount']), '.2f')
+            sale_data.append(data)
+        return export_sales_to_excel(sale_data)
+    
+    # Set up pagination
+    per_page = 100  # Display 100 sales per page
+    paginator = Paginator(sales, per_page)
+    page = request.GET.get('page', 1)
+    
+    try:
+        sale_queryset = paginator.page(page)
+    except PageNotAnInteger:
+        sale_queryset = paginator.page(1)
+    except EmptyPage:
+        sale_queryset = paginator.page(paginator.num_pages)
+    
+    # Get total count for serial numbering
+    total_sales_count = paginator.count
+    current_page_number = sale_queryset.number
+    
+    # Convert paginated queryset to list with additional data
     sale_data = []
-    for sale in sales:
+    start_index = (current_page_number - 1) * per_page
+    
+    for idx, sale in enumerate(sale_queryset):
         data = {}
         for field in sale._meta.get_fields(include_parents=False):
             if field.related_model is None:
                 data[field.name] = getattr(sale, field.name)
+        # Calculate serial number for descending order (newest first)
+        data['serial_no'] = total_sales_count - start_index - idx
         data['items'] = salesItems.objects.filter(sale_id=sale).all()
         data['item_count'] = len(data['items'])
         if 'tax_amount' in data:
@@ -528,13 +565,11 @@ def salesList(request):
     # Calculate products sold count
     products_sold_count = salesItems.objects.filter(sale_id__in=sales).values('product_id__name').annotate(total_sold=Sum('qty')).order_by('-total_sold')
 
-    # Check if download is requested
-    if 'download' in request.GET:
-        return export_sales_to_excel(sale_data)
-
     context = {
         'page_title': 'Sales Transactions',
         'sale_data': sale_data,
+        'page_obj': sale_queryset,
+        'paginator': paginator,
         'user_groups': user_groups,
         'u': u,
         'search_query': search_query,
@@ -681,7 +716,17 @@ def get_sunday(d):
 @cache_control(no_cache=True, must_revalidate=True, no_store=True)
 @login_required()
 def report(request):
-    # Get filter date from request or default to today
+    # Get filter year from request or default to current year
+    filter_year_str = request.GET.get('filter_year')
+    if filter_year_str:
+        try:
+            filter_year = int(filter_year_str)
+        except (ValueError, TypeError):
+            filter_year = timezone.now().year
+    else:
+        filter_year = timezone.now().year
+    
+    # Get filter date from request, but do not default to today when no date is provided
     filter_date_str = request.GET.get('filter_date')
     if filter_date_str:
         try:
@@ -689,23 +734,29 @@ def report(request):
             year, month, day = map(int, filter_date_str.split('-'))
             filter_date = date(year, month, day)
         except (ValueError, TypeError):
-            filter_date = timezone.now().date()
+            filter_date = None
     else:
-        filter_date = timezone.now().date()
-    
-    today = filter_date
-    first_sunday = get_sunday(date(today.year, 1, 1))
-    current_sunday = get_sunday(today)
+        filter_date = None
+
+    # Select the weekly date highlight only when the chosen date belongs to the chosen year
+    selected_week_date = filter_date if filter_date and filter_date.year == filter_year else None
+
+    today = timezone.now().date()
+    year_start = date(filter_year, 1, 1)
+    year_end = date(filter_year, 12, 31)
+    first_sunday = get_sunday(year_start)
+    if filter_year == today.year:
+        last_sunday = get_sunday(today)
+    else:
+        last_sunday = get_sunday(year_end)
 
     weekly_reports = []
     week_number = 1
-    while first_sunday <= current_sunday:
-        week_start = first_sunday
+    week_start = first_sunday
+    while week_start <= last_sunday:
         week_end = week_start + timedelta(days=6)
         is_current_week = week_start <= today <= week_end
-
-        # Check if the selected date falls within this week
-        is_selected_week = week_start <= filter_date <= week_end
+        is_selected_week = selected_week_date and week_start <= selected_week_date <= week_end
 
         week_sales = Sales.objects.filter(date_added__date__gte=week_start, date_added__date__lte=week_end)
         total_sales = week_sales.aggregate(total=Sum('grand_total'))['total'] or 0
@@ -719,29 +770,38 @@ def report(request):
         # Calculate net sales
         net_sales = total_sales - total_debits
 
-        # Include in reports if no filter is applied or if the week matches the filter
-        if not filter_date_str or is_selected_week:
-            weekly_reports.append({
-                'week_number': week_number,
-                'start_date': week_start.strftime("%d-%b-%Y"),
-                'end_date': week_end.strftime("%d-%b-%Y"),
-                'total_sales': total_sales,
-                'total_debits': total_debits,
-                'net_sales': net_sales,
-                'is_current_week': is_current_week,
-                'is_selected_week': is_selected_week
-            })
+        weekly_reports.append({
+            'week_number': week_number,
+            'start_date': week_start.strftime("%d-%b-%Y"),
+            'end_date': week_end.strftime("%d-%b-%Y"),
+            'total_sales': total_sales,
+            'total_debits': total_debits,
+            'net_sales': net_sales,
+            'is_current_week': is_current_week,
+            'is_selected_week': is_selected_week
+        })
 
-        first_sunday += timedelta(days=7)
         week_number += 1
+        week_start += timedelta(days=7)
 
     weekly_reports.reverse()
+
+    # Get all available years with sales data for the filter dropdown
+    all_sales = Sales.objects.all()
+    available_years = sorted(
+        set([sale.date_added.year for sale in all_sales]),
+        reverse=True
+    )
+    if not available_years:
+        available_years = [timezone.now().year]
 
     context = {
         'weekly_reports': weekly_reports,
         'user_groups': request.user.groups.all(),
         'u': request.user,
         'filter_date': filter_date,
+        'filter_year': filter_year,
+        'available_years': available_years,
         'today': timezone.now().date(),
         'total_sales': '{:,.2f}'.format(total_sales) if 'total_sales' in locals() else '{:,.2f}'.format(0),
     }
@@ -814,8 +874,9 @@ def add_weekly_debit(request, week_number):
     if request.method == 'POST':
         description = request.POST.get('description')
         amount = request.POST.get('amount')
+        debit_date_str = request.POST.get('debit_date')
         
-        if description and amount:
+        if description and amount and debit_date_str:
             from posApp.models import WeeklyDebit
             
             # Calculate the start date for the requested week
@@ -826,20 +887,21 @@ def add_weekly_debit(request, week_number):
             # Create new debit - convert amount to float
             try:
                 amount = float(amount)
+                debit_date = datetime.strptime(debit_date_str, '%Y-%m-%d').date()
                 # Create new debit entry
                 WeeklyDebit.objects.create(
                     week_number=week_number,
                     week_start_date=week_start,
+                    debit_date=debit_date,
                     description=description,
                     amount=amount
                 )
                 messages.success(request, 'Debit added successfully')
             except ValueError:
-                messages.error(request, 'Invalid amount entered')
+                messages.error(request, 'Invalid amount or date entered')
                 return redirect('weekly_report_detail', week_number=week_number)
-            messages.success(request, 'Debit added successfully!')
         else:
-            messages.error(request, 'Description and amount are required!')
+            messages.error(request, 'Description, amount, and date are required!')
             
     return redirect('weekly_report_detail', week_number=week_number)
 
@@ -852,19 +914,22 @@ def edit_weekly_debit(request, pk):
     if request.method == 'POST':
         description = request.POST.get('description')
         amount = request.POST.get('amount')
+        debit_date_str = request.POST.get('debit_date')
         
-        if description and amount:
+        if description and amount and debit_date_str:
             try:
                 amount = float(amount)
+                debit_date = datetime.strptime(debit_date_str, '%Y-%m-%d').date()
                 # Update debit entry
                 debit.description = description
                 debit.amount = amount
+                debit.debit_date = debit_date
                 debit.save()
                 messages.success(request, 'Debit updated successfully')
             except ValueError:
-                messages.error(request, 'Invalid amount entered')
+                messages.error(request, 'Invalid amount or date entered')
         else:
-            messages.error(request, 'Description and amount are required!')
+            messages.error(request, 'Description, amount, and date are required!')
             
     return redirect('weekly_report_detail', week_number=week_number)
 
@@ -994,7 +1059,7 @@ def export_weekly_report(request, week_number):
                 
                 # Add data
                 for debit in debits:
-                    ws[f'A{row}'] = debit.date_added.strftime('%d-%b-%Y')
+                    ws[f'A{row}'] = debit.debit_date.strftime('%d-%b-%Y')
                     ws[f'B{row}'] = debit.description
                     ws[f'C{row}'] = debit.amount
                     ws[f'C{row}'].number_format = '₹#,##0.00'
@@ -1933,19 +1998,25 @@ def employee(request):
     user_groups = request.user.groups.all()
     u = request.user
 
-    employees = Employee.objects.all()
+    employees = Employee.objects.order_by('display_order', 'name')
 
     if request.method == "POST":
         name = request.POST.get('name')
         phone = request.POST.get('phone')
         position = request.POST.get('position')
         daily_wage = request.POST.get('daily_wage')
+        display_order = request.POST.get('display_order', 0)
+        try:
+            display_order = int(display_order)
+        except (TypeError, ValueError):
+            display_order = 0
 
         Employee.objects.create(
             name=name,
             phone_number=phone,
             position=position,
-            daily_wage=daily_wage
+            daily_wage=daily_wage,
+            display_order=display_order
         )
         return redirect('employee')   # reload page after saving
 
@@ -1968,6 +2039,11 @@ def edit_employee(request, pk):
         employee.phone_number = request.POST.get('phone')
         employee.position = request.POST.get('position')
         employee.daily_wage = request.POST.get('daily_wage')
+        display_order = request.POST.get('display_order', 0)
+        try:
+            employee.display_order = int(display_order)
+        except (TypeError, ValueError):
+            employee.display_order = 0
         employee.save()
         return redirect('employee')
 
@@ -1982,7 +2058,7 @@ def mark_attendance(request, date):
     from posApp.models import Attendance
     
     attendance_date = datetime.strptime(date, '%Y-%m-%d').date()
-    employees = Employee.objects.all()
+    employees = Employee.objects.order_by('display_order', 'name')
     
     if request.method == 'POST':
         for employee in employees:
@@ -2005,7 +2081,7 @@ def mark_attendance(request, date):
             record = Attendance.objects.get(employee=employee, date=attendance_date)
             attendance_records[employee.id] = record.present
         except Attendance.DoesNotExist:
-            attendance_records[employee.id] = False
+            attendance_records[employee.id] = True
     
     user_groups = request.user.groups.all()
     u = request.user
@@ -2059,8 +2135,8 @@ def attendance_summary(request):
     # Make sure start_date is not after end_date
     if start_date > end_date:
         start_date, end_date = end_date, start_date
-        
-    employees = Employee.objects.all()
+    
+    employees = Employee.objects.order_by('display_order', 'name')
     
     # Get all working days in the period (Tuesday, Wednesday, Thursday)
     all_working_days = []
@@ -2483,7 +2559,7 @@ def attendance(request):
     user_groups = request.user.groups.all()
     u = request.user
     
-    employees = Employee.objects.all()
+    employees = Employee.objects.order_by('display_order', 'name')
     
     # Get selected week from request or default to current week
     selected_week = request.GET.get('week', '0')
@@ -2919,13 +2995,14 @@ def export_bulk_data(request):
             })
         
         # Export Employees
-        for employee in Employee.objects.all():
+        for employee in Employee.objects.order_by('display_order', 'name'):
             data['employees'].append({
                 'id': employee.id,
                 'name': employee.name,
                 'phone_number': employee.phone_number,
                 'position': employee.position,
                 'daily_wage': float(employee.daily_wage),
+                'display_order': employee.display_order,
             })
         
         # Export Customers
@@ -3093,6 +3170,7 @@ def import_bulk_data(request):
                         'phone_number': item['phone_number'],
                         'position': item['position'],
                         'daily_wage': item['daily_wage'],
+                        'display_order': item.get('display_order', 0),
                     }
                 )
                 imported_count['employees'] += 1

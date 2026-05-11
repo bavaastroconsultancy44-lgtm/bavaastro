@@ -16,11 +16,14 @@
             <!-- Search Field -->
             <form action="{% url 'sales-page' %}" method="GET" class="d-flex">
                 <div class="mdc-text-field mdc-text-field--outlined me-2">
-                    <input class="mdc-text-field__input" type="text" name="q" value="{% if search_query %}{{ search_query }}{% endif %}" placeholder="Search" aria-label="Search Sales">
-                    <label class="mdc-floating-label">Search</label> 
+                    <input class="mdc-text-field__input" type="text" name="q"
+                        value="{% if search_query %}{{ search_query }}{% endif %}" placeholder="Search"
+                        aria-label="Search Sales">
+                    <label class="mdc-floating-label">Search</label>
                 </div>
                 <div class="mdc-text-field mdc-text-field--outlined me-2">
-                    <input type="date" name="date" value="{% if date %}{{ date }}{% endif %}" class="mdc-text-field__input" aria-label="Date">
+                    <input type="date" name="date" value="{% if date %}{{ date }}{% endif %}"
+                        class="mdc-text-field__input" aria-label="Date">
                     <label class="mdc-floating-label">Date</label>
                 </div>
                 <button type="submit" class="btn btn-primary">Search</button>
@@ -33,7 +36,7 @@
 <div class="mdc-layout-grid__cell stretch-card mdc-layout-grid__cell--span-12">
     <div class="mdc-card py-2">
         {% for product in products_sold_count %}
-            <h5 class="card-title mb-0">{{ product.product_id__name }} :  {{ product.total_sold }}</h5>
+        <h5 class="card-title mb-0">{{ product.product_id__name }} : {{ product.total_sold }}</h5>
         {% endfor %}
     </div>
 </div>
@@ -57,7 +60,7 @@
                 <thead>
                     <tr>
                         <th class="text-center py-1">
-                            <input type="checkbox" id="select-all">  <!-- Select all checkbox -->
+                            <input type="checkbox" id="select-all"> <!-- Select all checkbox -->
                         </th>
                         <th class="text-center py-1">S.No</th>
                         <th class="text-center py-1">DateTime</th>
@@ -87,10 +90,14 @@
                         <!-- <td class="px-2 py-1 text-end">({{ sale.tax }}%) {{ sale.tax_amount|intcomma:2 }}</td> -->
                         <!-- <td class="px-2 py-1 text-center">{{ sale.item_count|intcomma }}</td> -->
                         <td class="px-2 py-1 text-center">
-                            <button class="mdc-button mdc-button--raised p-1 icon-button filled-button--light mdc-ripple-upgraded view-data" type="button" data-id="{{ sale.id }}" title="View Receipt">
+                            <button
+                                class="mdc-button mdc-button--raised p-1 icon-button filled-button--light mdc-ripple-upgraded view-data"
+                                type="button" data-id="{{ sale.id }}" title="View Receipt">
                                 <i class="material-icons mdc-button__icon">receipt</i>
                             </button>
-                            <button class="mdc-button mdc-button--raised p-1 icon-button filled-button--danger mdc-ripple-upgraded delete-data" type="button" data-id="{{ sale.id }}" data-code="{{ sale.code }}" title="Delete">
+                            <button
+                                class="mdc-button mdc-button--raised p-1 icon-button filled-button--danger mdc-ripple-upgraded delete-data"
+                                type="button" data-id="{{ sale.id }}" data-code="{{ sale.code }}" title="Delete">
                                 <i class="material-icons mdc-button__icon">deleteoutline</i>
                             </button>
                         </td>
@@ -99,47 +106,86 @@
                 </tbody>
             </table>
         </div>
+        <!-- Pagination -->
+        <nav aria-label="Page navigation" class="mt-3">
+            <ul class="pagination justify-content-center">
+                {% if page_obj.has_previous %}
+                <li class="page-item">
+                    <a class="page-link"
+                        href="?page=1{% if search_query %}&q={{ search_query }}{% endif %}{% if date %}&date={{ date }}{% endif %}">First</a>
+                </li>
+                <li class="page-item">
+                    <a class="page-link"
+                        href="?page={{ page_obj.previous_page_number }}{% if search_query %}&q={{ search_query }}{% endif %}{% if date %}&date={{ date }}{% endif %}">Previous</a>
+                </li>
+                {% endif %}
+
+                {% for num in paginator.page_range %}
+                {% if page_obj.number == num %}
+                <li class="page-item active">
+                    <span class="page-link">{{ num }}</span>
+                </li>
+                {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                <li class="page-item">
+                    <a class="page-link"
+                        href="?page={{ num }}{% if search_query %}&q={{ search_query }}{% endif %}{% if date %}&date={{ date }}{% endif %}">{{ num }}</a>
+                </li>
+                {% endif %}
+                {% endfor %}
+
+                    {% if page_obj.has_next %}
+                    <li class="page-item">
+                        <a class="page-link"
+                            href="?page={{ page_obj.next_page_number }}{% if search_query %}&q={{ search_query }}{% endif %}{% if date %}&date={{ date }}{% endif %}">Next</a>
+                    </li>
+                    <li class="page-item">
+                        <a class="page-link"
+                            href="?page={{ paginator.num_pages }}{% if search_query %}&q={{ search_query }}{% endif %}{% if date %}&date={{ date }}{% endif %}">Last</a>
+                    </li>
+                    {% endif %}
+            </ul>
+        </nav>
     </div>
 </div>
 {% endblock pageContent %} {% block ScriptBlock %}
 <script>
-    $(function() {
-        $('.view-data').click(function() {
+    $(function () {
+        $('.view-data').click(function () {
             uni_modal("Transaction's Receipt", "{% url 'receipt-modal' %}?id=" + $(this).attr('data-id'))
         })
-        
+
 
     })
 </script>
 <script>
-    $(function() {
+    $(function () {
         // Select all checkboxes
-        $('#select-all').click(function() {
+        $('#select-all').click(function () {
             $('input[name="sale-checkbox"]').prop('checked', this.checked);
         });
 
         // View sale data modal
-        $('.view-data').click(function() {
+        $('.view-data').click(function () {
             uni_modal("Transaction's Receipt", "{% url 'receipt-modal' %}?id=" + $(this).attr('data-id'));
         });
 
         // Delete single sale record
-        $('.delete-data').click(function() {
+        $('.delete-data').click(function () {
             _conf("Are you sure to delete <b>" + $(this).attr('data-code') + "</b> Transaction record?", "delete_sale", [$(this).attr('data-id')]);
         });
 
         // Handle multiple sale deletions
-        $(function() {
-            $('.delete-multiple-data').click(function() {
+        $(function () {
+            $('.delete-multiple-data').click(function () {
                 let selectedSales = [];
-                
+
                 // Collect selected sale IDs
-                $('input[name="sale-checkbox"]:checked').each(function() {
+                $('input[name="sale-checkbox"]:checked').each(function () {
                     selectedSales.push($(this).val());
                 });
-                
+
                 console.log("Collected IDs for deletion:", selectedSales);  // Debug: Check collected IDs
-                
+
                 if (selectedSales.length > 0) {
                     // Show confirmation dialog
                     if (confirm("Are you sure you want to delete the selected records?")) {
@@ -150,7 +196,7 @@
                 }
             });
         });
-        
+
     });
 
     function delete_sale(id) {
@@ -163,7 +209,7 @@
             method: "POST",
             data: { id: id },
             dataType: "json",
-            success: function(resp) {
+            success: function (resp) {
                 if (resp.status == 'success') {
                     location.reload();
                 } else {
@@ -171,18 +217,18 @@
                 }
                 end_loader();
             },
-            error: function() {
+            error: function () {
                 alert_toast("An error occurred.", 'error');
                 end_loader();
             }
         });
     }
 
-    
-    
+
+
     function delete_multiple_sales(ids) {
         console.log("Sending IDs in AJAX request:", ids);  // Debug: Check IDs sent in AJAX
-        
+
         start_loader();
         $.ajax({
             headers: {
@@ -193,7 +239,7 @@
             data: JSON.stringify({ ids: ids }),  // Send as JSON payload
             contentType: "application/json",     // Specify JSON content type
             dataType: "json",
-            success: function(resp) {
+            success: function (resp) {
                 if (resp.status === 'success') {
                     location.reload();
                 } else {
@@ -201,13 +247,13 @@
                 }
                 end_loader();
             },
-            error: function() {
+            error: function () {
                 alert_toast("An error occurred.", 'error');
                 end_loader();
             }
         });
     }
-    
+
 </script>
 
 {% endblock ScriptBlock %}

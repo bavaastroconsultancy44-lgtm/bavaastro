@@ -14,6 +14,7 @@
                 <table class="table table-bordered">
                     <thead>
                         <tr>
+                            <th>Order</th>
                             <th>Employee Name</th>
                             <th>Position</th>
                             <th>Daily Wage</th>
@@ -23,6 +24,7 @@
                     <tbody>
                         {% for employee in employees %}
                         <tr>
+                            <td>{{ employee.display_order }}</td>
                             <td>{{ employee.name }}</td>
                             <td>{{ employee.position }}</td>
                             <td>₹{{ employee.daily_wage }}</td>

@@ -13,6 +13,10 @@ class Employee(models.Model):
     phone_number = models.CharField(max_length=15)
     position = models.CharField(max_length=100)
     daily_wage = models.DecimalField(max_digits=10, decimal_places=2)
+    display_order = models.IntegerField(default=0)
+
+    class Meta:
+        ordering = ['display_order', 'name']
 
     def __str__(self):
         return self.name
@@ -44,6 +48,7 @@ class Attendance(models.Model):
 class WeeklyDebit(models.Model):
     week_number = models.IntegerField()
     week_start_date = models.DateField()
+    debit_date = models.DateField(default=timezone.now)
     description = models.CharField(max_length=255)
     amount = models.DecimalField(max_digits=10, decimal_places=2)
     date_added = models.DateTimeField(default=timezone.now)
