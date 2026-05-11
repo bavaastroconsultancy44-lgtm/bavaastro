@@ -185,38 +185,82 @@
         <div class="info-box">
             <strong>ℹ️ About Bulk Upload/Export:</strong>
             <p style="margin: 8px 0 0 0; font-size: 14px;">
-                Export all your data as a JSON file for backup or transfer between systems. 
+                Export all your data as JSON files for backup or transfer between systems. 
                 Import previously exported JSON files to restore data to the database.
+                Data can be exported and imported in separate groups for better management.
             </p>
         </div>
 
-        <!-- Export Section -->
+        <!-- Products, Categories, Customers Section -->
         <div class="upload-section">
-            <h5>📥 Export Data</h5>
+            <h5>📦 Products, Categories & Customers</h5>
             <p style="color: #666; margin-bottom: 15px;">
-                Download all application data as a JSON file. This creates a complete backup of all records.
+                Export or import product catalog, categories, and customer information.
             </p>
-            <button class="btn btn-download" id="exportBtn" onclick="exportData()">
-                <i class="fas fa-download"></i> Download Data (JSON)
+            <button class="btn btn-download" onclick="exportData('products-categories-customers')">
+                <i class="fas fa-download"></i> Export Data
             </button>
+            <div class="file-input-wrapper" style="margin-left: 10px;">
+                <input type="file" id="fileInput1" accept=".json" onchange="handleFileSelect(event, 'products-categories-customers')">
+                <button class="btn btn-upload" onclick="document.getElementById('fileInput1').click()">
+                    <i class="fas fa-upload"></i> Import Data
+                </button>
+                <span class="file-name" id="fileName1"></span>
+            </div>
         </div>
 
         <hr>
 
-        <!-- Import Section -->
+        <!-- Employees and Attendance Section -->
         <div class="upload-section">
-            <h5>📤 Import Data</h5>
+            <h5>👥 Employees & Attendance</h5>
             <p style="color: #666; margin-bottom: 15px;">
-                Upload a previously exported JSON file to restore all data to the database.
+                Export or import employee details, attendance records, and weekly debits.
             </p>
-            
-            <div class="file-input-wrapper">
-                <input type="file" id="fileInput" accept=".json" onchange="handleFileSelect(event)">
-                <button class="btn btn-upload" onclick="document.getElementById('fileInput').click()">
-                    <i class="fas fa-upload"></i> Choose JSON File
+            <button class="btn btn-download" onclick="exportData('employees-attendance')">
+                <i class="fas fa-download"></i> Export Data
+            </button>
+            <div class="file-input-wrapper" style="margin-left: 10px;">
+                <input type="file" id="fileInput2" accept=".json" onchange="handleFileSelect(event, 'employees-attendance')">
+                <button class="btn btn-upload" onclick="document.getElementById('fileInput2').click()">
+                    <i class="fas fa-upload"></i> Import Data
                 </button>
-                <span class="file-name" id="fileName"></span>
+                <span class="file-name" id="fileName2"></span>
             </div>
+        </div>
+
+        <hr>
+
+        <!-- Sales Section -->
+        <div class="upload-section">
+            <h5>💰 Sales Transactions</h5>
+            <p style="color: #666; margin-bottom: 15px;">
+                Export or import sales records and sales items.
+            </p>
+            <button class="btn btn-download" onclick="exportData('sales')">
+                <i class="fas fa-download"></i> Export Data
+            </button>
+            <div class="file-input-wrapper" style="margin-left: 10px;">
+                <input type="file" id="fileInput3" accept=".json" onchange="handleFileSelect(event, 'sales')">
+                <button class="btn btn-upload" onclick="document.getElementById('fileInput3').click()">
+                    <i class="fas fa-upload"></i> Import Data
+                </button>
+                <span class="file-name" id="fileName3"></span>
+            </div>
+        </div>
+
+        <hr>
+
+        <!-- Full Export Section -->
+        <div class="upload-section">
+            <h5>📊 Full Database Export</h5>
+            <p style="color: #666; margin-bottom: 15px;">
+                Export all data as a single JSON file (legacy option).
+            </p>
+            <button class="btn btn-download" onclick="exportData('full')">
+                <i class="fas fa-download"></i> Export All Data
+            </button>
+        </div>
 
             <div class="progress-container" id="progressContainer">
                 <div style="margin-bottom: 10px; font-weight: 500;">Uploading...</div>
@@ -232,51 +276,65 @@
 </div>
 
 <script>
-    let selectedFile = null;
+    let selectedFiles = {};
 
-    function handleFileSelect(event) {
-        selectedFile = event.target.files[0];
-        const fileName = document.getElementById('fileName');
+    function handleFileSelect(event, type) {
+        selectedFiles[type] = event.target.files[0];
+        const fileNameId = `fileName${getIndex(type)}`;
+        const fileName = document.getElementById(fileNameId);
         const importMessage = document.getElementById('importMessage');
         
-        if (selectedFile) {
-            fileName.textContent = `Selected: ${selectedFile.name}`;
+        if (selectedFiles[type]) {
+            fileName.textContent = `Selected: ${selectedFiles[type].name}`;
             
             // Validate file type
-            if (!selectedFile.name.endsWith('.json')) {
+            if (!selectedFiles[type].name.endsWith('.json')) {
                 showMessage('Please select a valid JSON file.', 'danger');
-                selectedFile = null;
+                selectedFiles[type] = null;
                 fileName.textContent = '';
                 return;
             }
             
             // Validate file size (max 50MB)
-            if (selectedFile.size > 50 * 1024 * 1024) {
+            if (selectedFiles[type].size > 50 * 1024 * 1024) {
                 showMessage('File size exceeds 50MB limit.', 'danger');
-                selectedFile = null;
+                selectedFiles[type] = null;
                 fileName.textContent = '';
                 return;
             }
             
-            showMessage(`File ready: ${selectedFile.name}. Click "Upload" to import.`, 'warning');
-            
-            // Show upload button if not already visible
-            setTimeout(() => {
-                importData();
-            }, 500);
+            showMessage(`File ready: ${selectedFiles[type].name}. Click "Import Data" to proceed.`, 'warning');
         } else {
             fileName.textContent = '';
         }
     }
 
-    function exportData() {
-        const exportBtn = document.getElementById('exportBtn');
-        const originalText = exportBtn.innerHTML;
+    function exportData(type) {
+        let url;
+        let filename;
         
-        exportBtn.disabled = true;
-        exportBtn.innerHTML = '<span class="spinner"></span> Exporting...';
+        switch(type) {
+            case 'products-categories-customers':
+                url = '{% url "export-products-categories-customers" %}';
+                filename = 'products_categories_customers';
+                break;
+            case 'employees-attendance':
+                url = '{% url "export-employees-attendance" %}';
+                filename = 'employees_attendance';
+                break;
+            case 'sales':
+                url = '{% url "export-sales" %}';
+                filename = 'sales';
+                break;
+            case 'full':
+                url = '{% url "export-bulk-data" %}';
+                filename = 'pos_data_export';
+                break;
+            default:
+                return;
+        }
 
-        fetch('{% url "export-bulk-data" %}')
+        fetch(url)
             .then(response => {
                 if (!response.ok) {
                     return response.json().then(data => {
@@ -288,16 +346,16 @@
                     filename: response.headers.get('Content-Disposition')
                 }));
             })
-            .then(({blob, filename}) => {
+            .then(({blob, filename: disposition}) => {
                 const url = window.URL.createObjectURL(blob);
                 const link = document.createElement('a');
                 link.href = url;
                 
-                // Extract filename from Content-Disposition header or use default with timestamp
-                if (filename && filename.includes('filename=')) {
-                    link.download = filename.split('filename=')[1].replace(/"/g, '');
+                // Extract filename from Content-Disposition header or use default
+                if (disposition && disposition.includes('filename=')) {
+                    link.download = disposition.split('filename=')[1].replace(/"/g, '');
                 } else {
-                    link.download = `pos_data_export_${new Date().toISOString().slice(0, 10)}.json`;
+                    link.download = `${filename}_${new Date().toISOString().slice(0, 10)}.json`;
                 }
                 
                 document.body.appendChild(link);
@@ -305,36 +363,46 @@
                 window.URL.revokeObjectURL(url);
                 document.body.removeChild(link);
                 
-                showMessage('Data exported successfully!', 'success');
-                exportBtn.disabled = false;
-                exportBtn.innerHTML = originalText;
+                showMessage(`${type.replace(/-/g, ' ').toUpperCase()} exported successfully!`, 'success');
             })
             .catch(error => {
                 console.error('Export error:', error);
                 showMessage(`Export failed: ${error.message}`, 'danger');
-                exportBtn.disabled = false;
-                exportBtn.innerHTML = originalText;
             });
     }
 
-    function importData() {
-        if (!selectedFile) {
+    function importData(type) {
+        if (!selectedFiles[type]) {
             showMessage('Please select a file first.', 'warning');
             return;
         }
 
+        let url;
+        switch(type) {
+            case 'products-categories-customers':
+                url = '{% url "import-products-categories-customers" %}';
+                break;
+            case 'employees-attendance':
+                url = '{% url "import-employees-attendance" %}';
+                break;
+            case 'sales':
+                url = '{% url "import-sales" %}';
+                break;
+            default:
+                return;
+        }
+
         const formData = new FormData();
-        formData.append('file', selectedFile);
+        formData.append('file', selectedFiles[type]);
         formData.append('csrfmiddlewaretoken', getCookie('csrftoken'));
 
         const progressContainer = document.getElementById('progressContainer');
         const progressBar = document.getElementById('progressBar');
-        const importMessage = document.getElementById('importMessage');
 
         progressContainer.classList.add('show');
         progressBar.style.width = '25%';
 
-        fetch('{% url "import-bulk-data" %}', {
+        fetch(url, {
             method: 'POST',
             body: formData
         })
@@ -350,9 +418,11 @@
                     displayImportSummary(data.imported, data.errors);
                     
                     // Reset file input
-                    document.getElementById('fileInput').value = '';
-                    document.getElementById('fileName').textContent = '';
-                    selectedFile = null;
+                    const fileInputId = `fileInput${getIndex(type)}`;
+                    document.getElementById(fileInputId).value = '';
+                    const fileNameId = `fileName${getIndex(type)}`;
+                    document.getElementById(fileNameId).textContent = '';
+                    selectedFiles[type] = null;
                 } else {
                     showMessage(data.msg || 'Import failed', 'danger');
                 }
@@ -368,6 +438,15 @@
                 progressContainer.classList.remove('show');
                 progressBar.style.width = '0%';
             });
+    }
+
+    function getIndex(type) {
+        switch(type) {
+            case 'products-categories-customers': return 1;
+            case 'employees-attendance': return 2;
+            case 'sales': return 3;
+            default: return '';
+        }
     }
 
     function displayImportSummary(imported, errors) {
@@ -417,5 +496,23 @@
         }
         return cookieValue;
     }
+
+    // Auto-import when file is selected (for convenience)
+    function autoImport(type) {
+        setTimeout(() => {
+            importData(type);
+        }, 500);
+    }
+
+    // Attach auto-import to file selects
+    document.getElementById('fileInput1').addEventListener('change', function(e) {
+        if (e.target.files[0]) autoImport('products-categories-customers');
+    });
+    document.getElementById('fileInput2').addEventListener('change', function(e) {
+        if (e.target.files[0]) autoImport('employees-attendance');
+    });
+    document.getElementById('fileInput3').addEventListener('change', function(e) {
+        if (e.target.files[0]) autoImport('sales');
+    });
 </script>
 {% endblock pageContent %}

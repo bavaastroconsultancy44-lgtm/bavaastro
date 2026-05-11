@@ -55,4 +55,10 @@ urlpatterns = [
     path('bulk-upload', views.bulk_upload, name="bulk-upload"),
     path('export-bulk-data', views.export_bulk_data, name="export-bulk-data"),
     path('import-bulk-data', views.import_bulk_data, name="import-bulk-data"),
+    path('export-products-categories-customers', views.export_products_categories_customers, name="export-products-categories-customers"),
+    path('import-products-categories-customers', views.import_products_categories_customers, name="import-products-categories-customers"),
+    path('export-employees-attendance', views.export_employees_attendance, name="export-employees-attendance"),
+    path('import-employees-attendance', views.import_employees_attendance, name="import-employees-attendance"),
+    path('export-sales', views.export_sales, name="export-sales"),
+    path('import-sales', views.import_sales, name="import-sales"),
 ]
