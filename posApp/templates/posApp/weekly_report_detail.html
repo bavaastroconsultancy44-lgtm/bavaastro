@@ -47,10 +47,18 @@
                     </div>
                     <div class="card-body p-0">
                         <table class="table table-sm mb-0">
+                            <thead>
+                                <tr>
+                                    <th class="py-0 ps-2" style="width: 40%">Day</th>
+                                    <th class="py-0">Date</th>
+                                    <th class="text-end py-0 pe-2">Sales</th>
+                                </tr>
+                            </thead>
                             <tbody>
                                 {% for day in daily_sales %}
                                 <tr {% if day.day == 'Tue' or day.day == 'Wed' or day.day == 'Thu' %}class="table-warning"{% endif %}>
-                                    <td class="py-0 ps-2" style="width: 40%">{{ day.day }}</td>
+                                    <td class="py-0 ps-2">{{ day.day }}</td>
+                                    <td class="py-0">{{ day.date }}</td>
                                     <td class="text-end py-0 pe-2">₹{{ day.sales|floatformat:2 }}</td>
                                 </tr>
                                 {% endfor %}
@@ -105,6 +113,7 @@
                                 <thead>
                                     <tr>
                                         <th>Description</th>
+                                        <th>Date</th>
                                         <th class="text-end">Amount</th>
                                         <th class="text-center">Actions</th>
                                     </tr>
@@ -113,6 +122,7 @@
                                     {% for debit in debits %}
                                     <tr>
                                         <td class="py-1">{{ debit.description|truncatechars:20 }}</td>
+                                        <td class="py-1">{{ debit.debit_date|date:'d-M-Y' }}</td>
                                         <td class="text-end py-1">₹{{ debit.amount|floatformat:2 }}</td>
                                         <td class="text-center">
                                             <div class="btn-group btn-group-sm" role="group">

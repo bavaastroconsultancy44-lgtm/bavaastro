@@ -970,20 +970,32 @@ def export_weekly_report(request, week_number):
         # Calculate net sales
         net_sales = total_sales - total_debits
         
-        # Calculate daily sales
+        # Calculate daily sales and group debit entries by date
         day_names = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
         daily_sales = []
-        
+        debits_by_date = {}
+        for debit in debits:
+            debits_by_date.setdefault(debit.debit_date, []).append(debit)
+
         for i in range(7):
             current_date = week_start + timedelta(days=i)
             day_sales = Sales.objects.filter(date_added__date=current_date)
             day_total = day_sales.aggregate(total=Sum('grand_total'))['total'] or 0
             day_total = float(day_total)
-            
+
+            day_debits = debits_by_date.get(current_date, [])
+            debit_entries = [
+                {'description': debit.description, 'amount': float(debit.amount)}
+                for debit in day_debits
+            ]
+            debit_total = sum(entry['amount'] for entry in debit_entries)
+
             daily_sales.append({
                 'day': day_names[i],
                 'date': current_date.strftime('%d-%b-%Y'),
                 'sales': day_total,
+                'debits': debit_entries,
+                'balance': day_total - debit_total,
             })
         
         # Create an Excel workbook
@@ -1026,7 +1038,15 @@ def export_weekly_report(request, week_number):
             ws[f'A{row}'] = "Day"
             ws[f'B{row}'] = "Date"
             ws[f'C{row}'] = "Sales Amount"
-            for col in range(1, 4):
+            if include_debits:
+                ws[f'D{row}'] = "Debit Description"
+                ws[f'E{row}'] = "Debit Amount"
+                ws[f'F{row}'] = "Balance"
+                max_col = 6
+            else:
+                ws[f'D{row}'] = "Balance"
+                max_col = 4
+            for col in range(1, max_col + 1):
                 cell = ws.cell(row=row, column=col)
                 cell.font = openpyxl.styles.Font(bold=True)
             row += 1
@@ -1037,12 +1057,31 @@ def export_weekly_report(request, week_number):
                 ws[f'B{row}'] = day_data['date']
                 ws[f'C{row}'] = day_data['sales']
                 ws[f'C{row}'].number_format = '₹#,##0.00'
+                if include_debits:
+                    ws[f'D{row}'] = ''
+                    ws[f'E{row}'] = ''
+                    ws[f'F{row}'] = day_data['balance']
+                    ws[f'F{row}'].number_format = '₹#,##0.00'
+                else:
+                    ws[f'D{row}'] = day_data['balance']
+                    ws[f'D{row}'].number_format = '₹#,##0.00'
                 row += 1
+
+                if include_debits and day_data['debits']:
+                    for debit_entry in day_data['debits']:
+                        ws[f'A{row}'] = ''
+                        ws[f'B{row}'] = ''
+                        ws[f'C{row}'] = ''
+                        ws[f'D{row}'] = debit_entry['description']
+                        ws[f'E{row}'] = debit_entry['amount']
+                        ws[f'E{row}'].number_format = '₹#,##0.00'
+                        ws[f'F{row}'] = ''
+                        row += 1
             
             row += 2  # Add space after daily sales
         
-        # Add debit history if selected
-        if include_debits:
+        # Add debit history if selected and daily sales are not included
+        if include_debits and not include_daily_sales:
             ws[f'A{row}'] = "DEBIT HISTORY"
             ws[f'A{row}'].font = openpyxl.styles.Font(bold=True)
             row += 1
@@ -1492,18 +1531,31 @@ def export_date_range_report(request):
             # Calculate net sales
             net_sales = total_sales - total_debits
             
-            # Calculate daily sales
+            # Calculate daily sales and group debit entries by date
             daily_sales = []
             current_date = start_date
+            debits_by_date = {}
+            for debit in debits:
+                debits_by_date.setdefault(debit.debit_date, []).append(debit)
+
             while current_date <= end_date:
                 day_sales = Sales.objects.filter(date_added__date=current_date)
                 day_total = day_sales.aggregate(total=Sum('grand_total'))['total'] or 0
                 day_total = float(day_total)
-                
+
+                day_debits = debits_by_date.get(current_date, [])
+                debit_entries = [
+                    {'description': debit.description, 'amount': float(debit.amount)}
+                    for debit in day_debits
+                ]
+                debit_total = sum(entry['amount'] for entry in debit_entries)
+
                 daily_sales.append({
                     'date': current_date.strftime('%d-%b-%Y'),
                     'day': current_date.strftime('%a'),
                     'sales': day_total,
+                    'debits': debit_entries,
+                    'balance': day_total - debit_total,
                 })
                 current_date += timedelta(days=1)
             
@@ -1550,7 +1602,15 @@ def export_date_range_report(request):
                 ws[f'A{row}'] = "Date"
                 ws[f'B{row}'] = "Day"
                 ws[f'C{row}'] = "Sales Amount"
-                for col in range(1, 4):
+                if include_debits:
+                    ws[f'D{row}'] = "Debit Description"
+                    ws[f'E{row}'] = "Debit Amount"
+                    ws[f'F{row}'] = "Balance"
+                    max_col = 6
+                else:
+                    ws[f'D{row}'] = "Balance"
+                    max_col = 4
+                for col in range(1, max_col + 1):
                     cell = ws.cell(row=row, column=col)
                     cell.font = openpyxl.styles.Font(bold=True)
                 row += 1
@@ -1561,12 +1621,31 @@ def export_date_range_report(request):
                     ws[f'B{row}'] = day_data['day']
                     ws[f'C{row}'] = day_data['sales']
                     ws[f'C{row}'].number_format = '₹#,##0.00'
+                    if include_debits:
+                        ws[f'D{row}'] = ''
+                        ws[f'E{row}'] = ''
+                        ws[f'F{row}'] = day_data['balance']
+                        ws[f'F{row}'].number_format = '₹#,##0.00'
+                    else:
+                        ws[f'D{row}'] = day_data['balance']
+                        ws[f'D{row}'].number_format = '₹#,##0.00'
                     row += 1
+
+                    if include_debits and day_data['debits']:
+                        for debit_entry in day_data['debits']:
+                            ws[f'A{row}'] = ''
+                            ws[f'B{row}'] = ''
+                            ws[f'C{row}'] = ''
+                            ws[f'D{row}'] = debit_entry['description']
+                            ws[f'E{row}'] = debit_entry['amount']
+                            ws[f'E{row}'].number_format = '₹#,##0.00'
+                            ws[f'F{row}'] = ''
+                            row += 1
                 
                 row += 2  # Add space after daily sales
             
-            # Add debit history if selected
-            if include_debits:
+            # Add debit history if selected and daily sales are not included
+            if include_debits and not include_daily_sales:
                 ws[f'A{row}'] = "DEBIT HISTORY"
                 ws[f'A{row}'].font = openpyxl.styles.Font(bold=True)
                 row += 1
@@ -1584,7 +1663,7 @@ def export_date_range_report(request):
                     
                     # Add data
                     for debit in debits:
-                        ws[f'A{row}'] = debit.date_added.strftime('%d-%b-%Y')
+                        ws[f'A{row}'] = debit.debit_date.strftime('%d-%b-%Y')
                         ws[f'B{row}'] = f"Week {debit.week_number}"
                         ws[f'C{row}'] = debit.description
                         ws[f'D{row}'] = debit.amount
@@ -1665,18 +1744,31 @@ def email_date_range_report(request):
             # Calculate net sales
             net_sales = total_sales - total_debits
             
-            # Calculate daily sales
+            # Calculate daily sales and group debit entries by date
             daily_sales = []
             current_date = start_date
+            debits_by_date = {}
+            for debit in debits:
+                debits_by_date.setdefault(debit.debit_date, []).append(debit)
+
             while current_date <= end_date:
                 day_sales = Sales.objects.filter(date_added__date=current_date)
                 day_total = day_sales.aggregate(total=Sum('grand_total'))['total'] or 0
                 day_total = float(day_total)
-                
+
+                day_debits = debits_by_date.get(current_date, [])
+                debit_entries = [
+                    {'description': debit.description, 'amount': float(debit.amount)}
+                    for debit in day_debits
+                ]
+                debit_total = sum(entry['amount'] for entry in debit_entries)
+
                 daily_sales.append({
                     'date': current_date.strftime('%d-%b-%Y'),
                     'day': current_date.strftime('%a'),
                     'sales': day_total,
+                    'debits': debit_entries,
+                    'balance': day_total - debit_total,
                 })
                 current_date += timedelta(days=1)
             
@@ -1723,7 +1815,15 @@ def email_date_range_report(request):
                 ws[f'A{row}'] = "Date"
                 ws[f'B{row}'] = "Day"
                 ws[f'C{row}'] = "Sales Amount"
-                for col in range(1, 4):
+                if include_debits:
+                    ws[f'D{row}'] = "Debit Description"
+                    ws[f'E{row}'] = "Debit Amount"
+                    ws[f'F{row}'] = "Balance"
+                    max_col = 6
+                else:
+                    ws[f'D{row}'] = "Balance"
+                    max_col = 4
+                for col in range(1, max_col + 1):
                     cell = ws.cell(row=row, column=col)
                     cell.font = openpyxl.styles.Font(bold=True)
                 row += 1
@@ -1734,12 +1834,31 @@ def email_date_range_report(request):
                     ws[f'B{row}'] = day_data['day']
                     ws[f'C{row}'] = day_data['sales']
                     ws[f'C{row}'].number_format = '₹#,##0.00'
+                    if include_debits:
+                        ws[f'D{row}'] = ''
+                        ws[f'E{row}'] = ''
+                        ws[f'F{row}'] = day_data['balance']
+                        ws[f'F{row}'].number_format = '₹#,##0.00'
+                    else:
+                        ws[f'D{row}'] = day_data['balance']
+                        ws[f'D{row}'].number_format = '₹#,##0.00'
                     row += 1
+
+                    if include_debits and day_data['debits']:
+                        for debit_entry in day_data['debits']:
+                            ws[f'A{row}'] = ''
+                            ws[f'B{row}'] = ''
+                            ws[f'C{row}'] = ''
+                            ws[f'D{row}'] = debit_entry['description']
+                            ws[f'E{row}'] = debit_entry['amount']
+                            ws[f'E{row}'].number_format = '₹#,##0.00'
+                            ws[f'F{row}'] = ''
+                            row += 1
                 
                 row += 2  # Add space after daily sales
             
-            # Add debit history if selected
-            if include_debits:
+            # Add debit history if selected and daily sales are not included
+            if include_debits and not include_daily_sales:
                 ws[f'A{row}'] = "DEBIT HISTORY"
                 ws[f'A{row}'].font = openpyxl.styles.Font(bold=True)
                 row += 1
@@ -1757,7 +1876,7 @@ def email_date_range_report(request):
                     
                     # Add data
                     for debit in debits:
-                        ws[f'A{row}'] = debit.date_added.strftime('%d-%b-%Y')
+                        ws[f'A{row}'] = debit.debit_date.strftime('%d-%b-%Y')
                         ws[f'B{row}'] = f"Week {debit.week_number}"
                         ws[f'C{row}'] = debit.description
                         ws[f'D{row}'] = debit.amount
