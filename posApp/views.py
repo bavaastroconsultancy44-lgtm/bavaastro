@@ -998,124 +998,201 @@ def export_weekly_report(request, week_number):
                 'balance': day_total - debit_total,
             })
         
-        # Create an Excel workbook
+        # Create an Excel workbook with two sheets
         wb = openpyxl.Workbook()
-        ws = wb.active
-        ws.title = "Weekly Report"
+        
+        # ========== SHEET 1: Daily Sales Report ==========
+        ws1 = wb.active
+        ws1.title = "Daily Sales"
         
         # Add title
-        ws['A1'] = f"Weekly Sales Report - Week {week_number}"
-        ws['A2'] = f"Period: {week_start.strftime('%d-%b-%Y')} to {week_end.strftime('%d-%b-%Y')}"
-        ws['A1'].font = openpyxl.styles.Font(size=14, bold=True)
-        ws['A2'].font = openpyxl.styles.Font(italic=True)
+        ws1['A1'] = f"Weekly Sales Report - Week {week_number}"
+        ws1['A2'] = f"Period: {week_start.strftime('%d-%b-%Y')} to {week_end.strftime('%d-%b-%Y')}"
+        ws1['A1'].font = openpyxl.styles.Font(size=14, bold=True)
+        ws1['A2'].font = openpyxl.styles.Font(italic=True)
         
         # Add summary
-        ws['A4'] = "SUMMARY"
-        ws['A4'].font = openpyxl.styles.Font(bold=True)
+        ws1['A4'] = "SUMMARY"
+        ws1['A4'].font = openpyxl.styles.Font(bold=True)
         
-        ws['A5'] = "Gross Sales:"
-        ws['B5'] = total_sales
-        ws['B5'].number_format = '₹#,##0.00'
+        ws1['A5'] = "Gross Credit:"
+        ws1['B5'] = total_sales
+        ws1['B5'].number_format = '₹#,##0.00'
         
-        ws['A6'] = "Total Debits:"
-        ws['B6'] = total_debits
-        ws['B6'].number_format = '₹#,##0.00'
+        ws1['A6'] = "Total Debits:"
+        ws1['B6'] = total_debits
+        ws1['B6'].number_format = '₹#,##0.00'
         
-        ws['A7'] = "Net Balance:"
-        ws['B7'] = net_sales
-        ws['B7'].font = openpyxl.styles.Font(bold=True)
-        ws['B7'].number_format = '₹#,##0.00'
+        ws1['A7'] = "Net Balance:"
+        ws1['B7'] = net_sales
+        ws1['B7'].font = openpyxl.styles.Font(bold=True)
+        ws1['B7'].number_format = '₹#,##0.00'
         
         row = 9  # Start row for the next section
         
-        # Add daily sales if selected
-        if include_daily_sales:
-            ws[f'A{row}'] = "DAILY SALES"
-            ws[f'A{row}'].font = openpyxl.styles.Font(bold=True)
-            row += 1
-            
-            # Add headers
-            ws[f'A{row}'] = "Day"
-            ws[f'B{row}'] = "Date"
-            ws[f'C{row}'] = "Sales Amount"
-            if include_debits:
-                ws[f'D{row}'] = "Debit Description"
-                ws[f'E{row}'] = "Debit Amount"
-                ws[f'F{row}'] = "Balance"
-                max_col = 6
-            else:
-                ws[f'D{row}'] = "Balance"
-                max_col = 4
-            for col in range(1, max_col + 1):
-                cell = ws.cell(row=row, column=col)
-                cell.font = openpyxl.styles.Font(bold=True)
-            row += 1
-            
-            # Add data
-            for day_data in daily_sales:
-                ws[f'A{row}'] = day_data['day']
-                ws[f'B{row}'] = day_data['date']
-                ws[f'C{row}'] = day_data['sales']
-                ws[f'C{row}'].number_format = '₹#,##0.00'
-                if include_debits:
-                    ws[f'D{row}'] = ''
-                    ws[f'E{row}'] = ''
-                    ws[f'F{row}'] = day_data['balance']
-                    ws[f'F{row}'].number_format = '₹#,##0.00'
-                else:
-                    ws[f'D{row}'] = day_data['balance']
-                    ws[f'D{row}'].number_format = '₹#,##0.00'
-                row += 1
-
-                if include_debits and day_data['debits']:
-                    for debit_entry in day_data['debits']:
-                        ws[f'A{row}'] = ''
-                        ws[f'B{row}'] = ''
-                        ws[f'C{row}'] = ''
-                        ws[f'D{row}'] = debit_entry['description']
-                        ws[f'E{row}'] = debit_entry['amount']
-                        ws[f'E{row}'].number_format = '₹#,##0.00'
-                        ws[f'F{row}'] = ''
-                        row += 1
-            
-            row += 2  # Add space after daily sales
+        # Add daily sales
+        ws1[f'A{row}'] = "DAILY SALES"
+        ws1[f'A{row}'].font = openpyxl.styles.Font(bold=True)
+        row += 1
         
-        # Add debit history if selected and daily sales are not included
-        if include_debits and not include_daily_sales:
-            ws[f'A{row}'] = "DEBIT HISTORY"
-            ws[f'A{row}'].font = openpyxl.styles.Font(bold=True)
-            row += 1
+        # Add headers with red color
+        ws1[f'A{row}'] = "Date"
+        ws1[f'B{row}'] = "Details"
+        ws1[f'C{row}'] = "Credit Amount"
+        ws1[f'D{row}'] = "Debit Amount"
+        ws1[f'E{row}'] = "Balance"
+        for col in range(1, 6):
+            cell = ws1.cell(row=row, column=col)
+            cell.font = openpyxl.styles.Font(bold=True, color="FF0000")  # Red color
+        row += 1
+        
+        # Add data - skip entries with 0 values
+        running_balance = 0  # Initialize running balance
+        for day_data in daily_sales:
+            # Skip if sales and debits are both 0
+            if day_data['sales'] == 0 and sum(d['amount'] for d in day_data['debits']) == 0:
+                continue
             
-            if debits.exists():
-                # Add headers
-                ws[f'A{row}'] = "Date"
-                ws[f'B{row}'] = "Description"
-                ws[f'C{row}'] = "Amount"
-                for col in range(1, 4):
-                    cell = ws.cell(row=row, column=col)
-                    cell.font = openpyxl.styles.Font(bold=True)
+            # Add credit/sales row for this day
+            if day_data['sales'] > 0:
+                running_balance += day_data['sales']
+                ws1[f'A{row}'] = day_data['date']
+                ws1[f'B{row}'] = day_data['day']
+                ws1[f'C{row}'] = day_data['sales']
+                ws1[f'C{row}'].number_format = '₹#,##0.00'
+                ws1[f'D{row}'] = ''
+                ws1[f'E{row}'] = running_balance
+                ws1[f'E{row}'].number_format = '₹#,##0.00'
                 row += 1
-                
-                # Add data
-                for debit in debits:
-                    ws[f'A{row}'] = debit.debit_date.strftime('%d-%b-%Y')
-                    ws[f'B{row}'] = debit.description
-                    ws[f'C{row}'] = debit.amount
-                    ws[f'C{row}'].number_format = '₹#,##0.00'
+            
+            # Add individual debit entries for this day (skip 0 amounts)
+            for debit_entry in day_data['debits']:
+                if debit_entry['amount'] > 0:
+                    running_balance -= debit_entry['amount']
+                    ws1[f'A{row}'] = ''
+                    ws1[f'B{row}'] = debit_entry['description']
+                    ws1[f'C{row}'] = ''
+                    ws1[f'D{row}'] = debit_entry['amount']
+                    ws1[f'D{row}'].number_format = '₹#,##0.00'
+                    ws1[f'E{row}'] = running_balance
+                    ws1[f'E{row}'].number_format = '₹#,##0.00'
                     row += 1
-            else:
-                ws[f'A{row}'] = "No debits recorded for this week."
+            
+            # If day had no sales but had debits, still need to show the day row with 0 sales
+            if day_data['sales'] == 0 and any(d['amount'] > 0 for d in day_data['debits']):
+                running_balance += 0  # No sales to add
+                ws1[f'A{row}'] = day_data['date']
+                ws1[f'B{row}'] = day_data['day']
+                ws1[f'C{row}'] = 0
+                ws1[f'C{row}'].number_format = '₹#,##0.00'
+                ws1[f'D{row}'] = ''
+                ws1[f'E{row}'] = running_balance
+                ws1[f'E{row}'].number_format = '₹#,##0.00'
                 row += 1
         
-        # Auto-adjust column widths
-        for column in ws.columns:
+        # Auto-adjust column widths for Sheet 1
+        for column in ws1.columns:
             max_length = 0
             column_letter = column[0].column_letter
             for cell in column:
                 if cell.value:
                     max_length = max(max_length, len(str(cell.value)))
             adjusted_width = max_length + 2
-            ws.column_dimensions[column_letter].width = adjusted_width
+            ws1.column_dimensions[column_letter].width = adjusted_width
+        
+        # ========== SHEET 2: Sales & Debit Summary ==========
+        ws2 = wb.create_sheet("Sales & Debits")
+        
+        # Add title
+        ws2['A1'] = f"Sales & Debit Summary - Week {week_number}"
+        ws2['A2'] = f"Period: {week_start.strftime('%d-%b-%Y')} to {week_end.strftime('%d-%b-%Y')}"
+        ws2['A1'].font = openpyxl.styles.Font(size=14, bold=True)
+        ws2['A2'].font = openpyxl.styles.Font(italic=True)
+        
+        row = 4
+        
+        # Add summary
+        ws2[f'A{row}'] = "SUMMARY"
+        ws2[f'A{row}'].font = openpyxl.styles.Font(bold=True)
+        row += 1
+        
+        ws2[f'A{row}'] = "Gross Credit:"
+        ws2[f'B{row}'] = total_sales
+        ws2[f'B{row}'].number_format = '₹#,##0.00'
+        row += 1
+        
+        ws2[f'A{row}'] = "Total Debits:"
+        ws2[f'B{row}'] = total_debits
+        ws2[f'B{row}'].number_format = '₹#,##0.00'
+        row += 1
+        
+        ws2[f'A{row}'] = "Net Balance:"
+        ws2[f'B{row}'] = net_sales
+        ws2[f'B{row}'].font = openpyxl.styles.Font(bold=True)
+        ws2[f'B{row}'].number_format = '₹#,##0.00'
+        row += 2
+        
+        # Add Daily Sales Amount section
+        ws2[f'A{row}'] = "DAILY SALES AMOUNT"
+        ws2[f'A{row}'].font = openpyxl.styles.Font(bold=True)
+        row += 1
+        
+        # Add headers for daily sales
+        ws2[f'A{row}'] = "Date"
+        ws2[f'B{row}'] = "Day"
+        ws2[f'C{row}'] = "Sales"
+        for col in range(1, 4):
+            cell = ws2.cell(row=row, column=col)
+            cell.font = openpyxl.styles.Font(bold=True)
+        row += 1
+        
+        # Add daily sales data - skip entries with 0 values
+        for day_data in daily_sales:
+            if day_data['sales'] > 0:
+                ws2[f'A{row}'] = day_data['date']
+                ws2[f'B{row}'] = day_data['day']
+                ws2[f'C{row}'] = day_data['sales']
+                ws2[f'C{row}'].number_format = '₹#,##0.00'
+                row += 1
+        
+        row += 1  # Add space
+        
+        # Add Debit History section
+        ws2[f'A{row}'] = "DEBIT HISTORY"
+        ws2[f'A{row}'].font = openpyxl.styles.Font(bold=True)
+        row += 1
+        
+        if debits.exists():
+            # Add headers
+            ws2[f'A{row}'] = "Date"
+            ws2[f'B{row}'] = "Description"
+            ws2[f'C{row}'] = "Amount"
+            for col in range(1, 4):
+                cell = ws2.cell(row=row, column=col)
+                cell.font = openpyxl.styles.Font(bold=True)
+            row += 1
+            
+            # Add data - skip 0 amounts
+            for debit in debits:
+                if float(debit.amount) > 0:
+                    ws2[f'A{row}'] = debit.debit_date.strftime('%d-%b-%Y')
+                    ws2[f'B{row}'] = debit.description
+                    ws2[f'C{row}'] = debit.amount
+                    ws2[f'C{row}'].number_format = '₹#,##0.00'
+                    row += 1
+        else:
+            ws2[f'A{row}'] = "No debits recorded for this week."
+            row += 1
+        
+        # Auto-adjust column widths for Sheet 2
+        for column in ws2.columns:
+            max_length = 0
+            column_letter = column[0].column_letter
+            for cell in column:
+                if cell.value:
+                    max_length = max(max_length, len(str(cell.value)))
+            adjusted_width = max_length + 2
+            ws2.column_dimensions[column_letter].width = adjusted_width
         
         # Set up the response for downloading the file
         response = HttpResponse(
@@ -1177,113 +1254,230 @@ def export_monthly_report(request):
         
         # Calculate daily sales
         daily_sales = []
+        debits_by_date = {}
+        for debit in debits:
+            debits_by_date.setdefault(debit.debit_date, []).append(debit)
+            
         current_date = first_day
         while current_date <= last_day:
             day_sales = Sales.objects.filter(date_added__date=current_date)
             day_total = day_sales.aggregate(total=Sum('grand_total'))['total'] or 0
             day_total = float(day_total)
             
+            day_debits = debits_by_date.get(current_date, [])
+            debit_entries = [
+                {'description': debit.description, 'amount': float(debit.amount)}
+                for debit in day_debits
+            ]
+            debit_total = sum(entry['amount'] for entry in debit_entries)
+            
             daily_sales.append({
                 'date': current_date.strftime('%d-%b-%Y'),
                 'day': current_date.strftime('%a'),
                 'sales': day_total,
+                'debits': debit_entries,
+                'balance': day_total - debit_total,
             })
             current_date += timedelta(days=1)
         
-        # Create an Excel workbook
+        # Create an Excel workbook with two sheets
         wb = openpyxl.Workbook()
-        ws = wb.active
-        ws.title = "Monthly Report"
+        
+        # ========== SHEET 1: Daily Sales Report ==========
+        ws1 = wb.active
+        ws1.title = "Daily Sales"
         
         # Add title
         month_name = first_day.strftime('%B')
-        ws['A1'] = f"Monthly Sales Report - {month_name} {year}"
-        ws['A2'] = f"Period: {first_day.strftime('%d-%b-%Y')} to {last_day.strftime('%d-%b-%Y')}"
-        ws['A1'].font = openpyxl.styles.Font(size=14, bold=True)
-        ws['A2'].font = openpyxl.styles.Font(italic=True)
+        ws1['A1'] = f"Monthly Sales Report - {month_name} {year}"
+        ws1['A2'] = f"Period: {first_day.strftime('%d-%b-%Y')} to {last_day.strftime('%d-%b-%Y')}"
+        ws1['A1'].font = openpyxl.styles.Font(size=14, bold=True)
+        ws1['A2'].font = openpyxl.styles.Font(italic=True)
         
         # Add summary
-        ws['A4'] = "SUMMARY"
-        ws['A4'].font = openpyxl.styles.Font(bold=True)
+        ws1['A4'] = "SUMMARY"
+        ws1['A4'].font = openpyxl.styles.Font(bold=True)
         
-        ws['A5'] = "Gross Sales:"
-        ws['B5'] = total_sales
-        ws['B5'].number_format = '₹#,##0.00'
+        ws1['A5'] = "Gross Credit:"
+        ws1['B5'] = total_sales
+        ws1['B5'].number_format = '₹#,##0.00'
         
-        ws['A6'] = "Total Debits:"
-        ws['B6'] = total_debits
-        ws['B6'].number_format = '₹#,##0.00'
+        ws1['A6'] = "Total Debits:"
+        ws1['B6'] = total_debits
+        ws1['B6'].number_format = '₹#,##0.00'
         
-        ws['A7'] = "Net Balance:"
-        ws['B7'] = net_sales
-        ws['B7'].font = openpyxl.styles.Font(bold=True)
-        ws['B7'].number_format = '₹#,##0.00'
+        ws1['A7'] = "Net Balance:"
+        ws1['B7'] = net_sales
+        ws1['B7'].font = openpyxl.styles.Font(bold=True)
+        ws1['B7'].number_format = '₹#,##0.00'
         
         row = 9  # Start row for the next section
         
-        # Add daily sales if selected
-        if include_daily_sales:
-            ws[f'A{row}'] = "DAILY SALES"
-            ws[f'A{row}'].font = openpyxl.styles.Font(bold=True)
-            row += 1
-            
-            # Add headers
-            ws[f'A{row}'] = "Date"
-            ws[f'B{row}'] = "Day"
-            ws[f'C{row}'] = "Sales Amount"
-            for col in range(1, 4):
-                cell = ws.cell(row=row, column=col)
-                cell.font = openpyxl.styles.Font(bold=True)
-            row += 1
-            
-            # Add data
-            for day_data in daily_sales:
-                ws[f'A{row}'] = day_data['date']
-                ws[f'B{row}'] = day_data['day']
-                ws[f'C{row}'] = day_data['sales']
-                ws[f'C{row}'].number_format = '₹#,##0.00'
-                row += 1
-            
-            row += 2  # Add space after daily sales
+        # Add daily sales
+        ws1[f'A{row}'] = "DAILY SALES"
+        ws1[f'A{row}'].font = openpyxl.styles.Font(bold=True)
+        row += 1
         
-        # Add debit history if selected
-        if include_debits:
-            ws[f'A{row}'] = "DEBIT HISTORY"
-            ws[f'A{row}'].font = openpyxl.styles.Font(bold=True)
-            row += 1
+        # Add headers with red color
+        ws1[f'A{row}'] = "Date"
+        ws1[f'B{row}'] = "Details"
+        ws1[f'C{row}'] = "Credit Amount"
+        ws1[f'D{row}'] = "Debit Amount"
+        ws1[f'E{row}'] = "Balance"
+        for col in range(1, 6):
+            cell = ws1.cell(row=row, column=col)
+            cell.font = openpyxl.styles.Font(bold=True, color="FF0000")  # Red color
+        row += 1
+        
+        # Add data - skip entries with 0 values
+        running_balance = 0  # Initialize running balance
+        for day_data in daily_sales:
+            # Skip if sales and debits are both 0
+            if day_data['sales'] == 0 and sum(d['amount'] for d in day_data['debits']) == 0:
+                continue
             
-            if debits.exists():
-                # Add headers
-                ws[f'A{row}'] = "Date"
-                ws[f'B{row}'] = "Week #"
-                ws[f'C{row}'] = "Description"
-                ws[f'D{row}'] = "Amount"
-                for col in range(1, 5):
-                    cell = ws.cell(row=row, column=col)
-                    cell.font = openpyxl.styles.Font(bold=True)
+            # Add credit/sales row for this day
+            if day_data['sales'] > 0:
+                running_balance += day_data['sales']
+                ws1[f'A{row}'] = day_data['date']
+                ws1[f'B{row}'] = day_data['day']
+                ws1[f'C{row}'] = day_data['sales']
+                ws1[f'C{row}'].number_format = '₹#,##0.00'
+                ws1[f'D{row}'] = ''
+                ws1[f'E{row}'] = running_balance
+                ws1[f'E{row}'].number_format = '₹#,##0.00'
                 row += 1
-                
-                # Add data
-                for debit in debits:
-                    ws[f'A{row}'] = debit.date_added.strftime('%d-%b-%Y')
-                    ws[f'B{row}'] = f"Week {debit.week_number}"
-                    ws[f'C{row}'] = debit.description
-                    ws[f'D{row}'] = debit.amount
-                    ws[f'D{row}'].number_format = '₹#,##0.00'
+            
+            # Add individual debit entries for this day (skip 0 amounts)
+            for debit_entry in day_data['debits']:
+                if debit_entry['amount'] > 0:
+                    running_balance -= debit_entry['amount']
+                    ws1[f'A{row}'] = ''
+                    ws1[f'B{row}'] = debit_entry['description']
+                    ws1[f'C{row}'] = ''
+                    ws1[f'D{row}'] = debit_entry['amount']
+                    ws1[f'D{row}'].number_format = '₹#,##0.00'
+                    ws1[f'E{row}'] = running_balance
+                    ws1[f'E{row}'].number_format = '₹#,##0.00'
                     row += 1
-            else:
-                ws[f'A{row}'] = "No debits recorded for this month."
+            
+            # If day had no sales but had debits, still need to show the day row with 0 sales
+            if day_data['sales'] == 0 and any(d['amount'] > 0 for d in day_data['debits']):
+                running_balance += 0  # No sales to add
+                ws1[f'A{row}'] = day_data['date']
+                ws1[f'B{row}'] = day_data['day']
+                ws1[f'C{row}'] = 0
+                ws1[f'C{row}'].number_format = '₹#,##0.00'
+                ws1[f'D{row}'] = ''
+                ws1[f'E{row}'] = running_balance
+                ws1[f'E{row}'].number_format = '₹#,##0.00'
                 row += 1
         
-        # Auto-adjust column widths
-        for column in ws.columns:
+        # Auto-adjust column widths for Sheet 1
+        for column in ws1.columns:
             max_length = 0
             column_letter = column[0].column_letter
             for cell in column:
                 if cell.value:
                     max_length = max(max_length, len(str(cell.value)))
             adjusted_width = max_length + 2
-            ws.column_dimensions[column_letter].width = adjusted_width
+            ws1.column_dimensions[column_letter].width = adjusted_width
+        
+        # ========== SHEET 2: Sales & Debit Summary ==========
+        ws2 = wb.create_sheet("Sales & Debits")
+        
+        # Add title
+        ws2['A1'] = f"Sales & Debit Summary - {month_name} {year}"
+        ws2['A2'] = f"Period: {first_day.strftime('%d-%b-%Y')} to {last_day.strftime('%d-%b-%Y')}"
+        ws2['A1'].font = openpyxl.styles.Font(size=14, bold=True)
+        ws2['A2'].font = openpyxl.styles.Font(italic=True)
+        
+        row = 4
+        
+        # Add summary
+        ws2[f'A{row}'] = "SUMMARY"
+        ws2[f'A{row}'].font = openpyxl.styles.Font(bold=True)
+        row += 1
+        
+        ws2[f'A{row}'] = "Gross Credit:"
+        ws2[f'B{row}'] = total_sales
+        ws2[f'B{row}'].number_format = '₹#,##0.00'
+        row += 1
+        
+        ws2[f'A{row}'] = "Total Debits:"
+        ws2[f'B{row}'] = total_debits
+        ws2[f'B{row}'].number_format = '₹#,##0.00'
+        row += 1
+        
+        ws2[f'A{row}'] = "Net Balance:"
+        ws2[f'B{row}'] = net_sales
+        ws2[f'B{row}'].font = openpyxl.styles.Font(bold=True)
+        ws2[f'B{row}'].number_format = '₹#,##0.00'
+        row += 2
+        
+        # Add Daily Sales Amount section
+        ws2[f'A{row}'] = "DAILY SALES AMOUNT"
+        ws2[f'A{row}'].font = openpyxl.styles.Font(bold=True)
+        row += 1
+        
+        # Add headers for daily sales
+        ws2[f'A{row}'] = "Date"
+        ws2[f'B{row}'] = "Day"
+        ws2[f'C{row}'] = "Sales"
+        for col in range(1, 4):
+            cell = ws2.cell(row=row, column=col)
+            cell.font = openpyxl.styles.Font(bold=True)
+        row += 1
+        
+        # Add daily sales data - skip entries with 0 values
+        for day_data in daily_sales:
+            if day_data['sales'] > 0:
+                ws2[f'A{row}'] = day_data['date']
+                ws2[f'B{row}'] = day_data['day']
+                ws2[f'C{row}'] = day_data['sales']
+                ws2[f'C{row}'].number_format = '₹#,##0.00'
+                row += 1
+        
+        row += 1  # Add space
+        
+        # Add Debit History section
+        ws2[f'A{row}'] = "DEBIT HISTORY"
+        ws2[f'A{row}'].font = openpyxl.styles.Font(bold=True)
+        row += 1
+        
+        if debits.exists():
+            # Add headers
+            ws2[f'A{row}'] = "Date"
+            ws2[f'B{row}'] = "Week #"
+            ws2[f'C{row}'] = "Description"
+            ws2[f'D{row}'] = "Amount"
+            for col in range(1, 5):
+                cell = ws2.cell(row=row, column=col)
+                cell.font = openpyxl.styles.Font(bold=True)
+            row += 1
+            
+            # Add data - skip 0 amounts
+            for debit in debits:
+                if float(debit.amount) > 0:
+                    ws2[f'A{row}'] = debit.debit_date.strftime('%d-%b-%Y')
+                    ws2[f'B{row}'] = f"Week {debit.week_number}"
+                    ws2[f'C{row}'] = debit.description
+                    ws2[f'D{row}'] = debit.amount
+                    ws2[f'D{row}'].number_format = '₹#,##0.00'
+                    row += 1
+        else:
+            ws2[f'A{row}'] = "No debits recorded for this month."
+            row += 1
+        
+        # Auto-adjust column widths for Sheet 2
+        for column in ws2.columns:
+            max_length = 0
+            column_letter = column[0].column_letter
+            for cell in column:
+                if cell.value:
+                    max_length = max(max_length, len(str(cell.value)))
+            adjusted_width = max_length + 2
+            ws2.column_dimensions[column_letter].width = adjusted_width
         
         # Set up the response for downloading the file
         response = HttpResponse(
@@ -1559,129 +1753,207 @@ def export_date_range_report(request):
                 })
                 current_date += timedelta(days=1)
             
-            # Create an Excel workbook
+            # Create an Excel workbook with two sheets
             wb = openpyxl.Workbook()
-            ws = wb.active
-            ws.title = "Date Range Report"
+            
+            # ========== SHEET 1: Daily Sales Report ==========
+            ws1 = wb.active
+            ws1.title = "Daily Sales"
             
             # Add title
-            ws['A1'] = f"Sales Report - {start_date.strftime('%d-%b-%Y')} to {end_date.strftime('%d-%b-%Y')}"
-            ws['A1'].font = openpyxl.styles.Font(size=14, bold=True)
+            ws1['A1'] = f"Sales Report - {start_date.strftime('%d-%b-%Y')} to {end_date.strftime('%d-%b-%Y')}"
+            ws1['A1'].font = openpyxl.styles.Font(size=14, bold=True)
             
             # Add date range
             date_range_days = (end_date - start_date).days + 1
-            ws['A2'] = f"Period: {date_range_days} days"
-            ws['A2'].font = openpyxl.styles.Font(italic=True)
+            ws1['A2'] = f"Period: {date_range_days} days"
+            ws1['A2'].font = openpyxl.styles.Font(italic=True)
             
             # Add summary
-            ws['A4'] = "SUMMARY"
-            ws['A4'].font = openpyxl.styles.Font(bold=True)
+            ws1['A4'] = "SUMMARY"
+            ws1['A4'].font = openpyxl.styles.Font(bold=True)
             
-            ws['A5'] = "Gross Sales:"
-            ws['B5'] = total_sales
-            ws['B5'].number_format = '₹#,##0.00'
+            ws1['A5'] = "Gross Credit:"
+            ws1['B5'] = total_sales
+            ws1['B5'].number_format = '₹#,##0.00'
             
-            ws['A6'] = "Total Debits:"
-            ws['B6'] = total_debits
-            ws['B6'].number_format = '₹#,##0.00'
+            ws1['A6'] = "Total Debits:"
+            ws1['B6'] = total_debits
+            ws1['B6'].number_format = '₹#,##0.00'
             
-            ws['A7'] = "Net Balance:"
-            ws['B7'] = net_sales
-            ws['B7'].font = openpyxl.styles.Font(bold=True)
-            ws['B7'].number_format = '₹#,##0.00'
+            ws1['A7'] = "Net Balance:"
+            ws1['B7'] = net_sales
+            ws1['B7'].font = openpyxl.styles.Font(bold=True)
+            ws1['B7'].number_format = '₹#,##0.00'
             
             row = 9  # Start row for the next section
             
-            # Add daily sales if selected
-            if include_daily_sales:
-                ws[f'A{row}'] = "DAILY SALES"
-                ws[f'A{row}'].font = openpyxl.styles.Font(bold=True)
-                row += 1
-                
-                # Add headers
-                ws[f'A{row}'] = "Date"
-                ws[f'B{row}'] = "Day"
-                ws[f'C{row}'] = "Sales Amount"
-                if include_debits:
-                    ws[f'D{row}'] = "Debit Description"
-                    ws[f'E{row}'] = "Debit Amount"
-                    ws[f'F{row}'] = "Balance"
-                    max_col = 6
-                else:
-                    ws[f'D{row}'] = "Balance"
-                    max_col = 4
-                for col in range(1, max_col + 1):
-                    cell = ws.cell(row=row, column=col)
-                    cell.font = openpyxl.styles.Font(bold=True)
-                row += 1
-                
-                # Add data
-                for day_data in daily_sales:
-                    ws[f'A{row}'] = day_data['date']
-                    ws[f'B{row}'] = day_data['day']
-                    ws[f'C{row}'] = day_data['sales']
-                    ws[f'C{row}'].number_format = '₹#,##0.00'
-                    if include_debits:
-                        ws[f'D{row}'] = ''
-                        ws[f'E{row}'] = ''
-                        ws[f'F{row}'] = day_data['balance']
-                        ws[f'F{row}'].number_format = '₹#,##0.00'
-                    else:
-                        ws[f'D{row}'] = day_data['balance']
-                        ws[f'D{row}'].number_format = '₹#,##0.00'
-                    row += 1
-
-                    if include_debits and day_data['debits']:
-                        for debit_entry in day_data['debits']:
-                            ws[f'A{row}'] = ''
-                            ws[f'B{row}'] = ''
-                            ws[f'C{row}'] = ''
-                            ws[f'D{row}'] = debit_entry['description']
-                            ws[f'E{row}'] = debit_entry['amount']
-                            ws[f'E{row}'].number_format = '₹#,##0.00'
-                            ws[f'F{row}'] = ''
-                            row += 1
-                
-                row += 2  # Add space after daily sales
+            # Add daily sales
+            ws1[f'A{row}'] = "DAILY SALES"
+            ws1[f'A{row}'].font = openpyxl.styles.Font(bold=True)
+            row += 1
             
-            # Add debit history if selected and daily sales are not included
-            if include_debits and not include_daily_sales:
-                ws[f'A{row}'] = "DEBIT HISTORY"
-                ws[f'A{row}'].font = openpyxl.styles.Font(bold=True)
-                row += 1
+            # Add headers with red color
+            ws1[f'A{row}'] = "Date"
+            ws1[f'B{row}'] = "Details"
+            ws1[f'C{row}'] = "Credit Amount"
+            ws1[f'D{row}'] = "Debit Amount"
+            ws1[f'E{row}'] = "Balance"
+            for col in range(1, 6):
+                cell = ws1.cell(row=row, column=col)
+                cell.font = openpyxl.styles.Font(bold=True, color="FF0000")  # Red color
+            row += 1
+            
+            # Add data - skip entries with 0 values
+            running_balance = 0  # Initialize running balance
+            for day_data in daily_sales:
+                # Skip if sales and debits are both 0
+                if day_data['sales'] == 0 and sum(d['amount'] for d in day_data['debits']) == 0:
+                    continue
                 
-                if debits.exists():
-                    # Add headers
-                    ws[f'A{row}'] = "Date"
-                    ws[f'B{row}'] = "Week #"
-                    ws[f'C{row}'] = "Description"
-                    ws[f'D{row}'] = "Amount"
-                    for col in range(1, 5):
-                        cell = ws.cell(row=row, column=col)
-                        cell.font = openpyxl.styles.Font(bold=True)
+                # Add credit/sales row for this day
+                if day_data['sales'] > 0:
+                    running_balance += day_data['sales']
+                    ws1[f'A{row}'] = day_data['date']
+                    ws1[f'B{row}'] = day_data['day']
+                    ws1[f'C{row}'] = day_data['sales']
+                    ws1[f'C{row}'].number_format = '₹#,##0.00'
+                    ws1[f'D{row}'] = ''
+                    ws1[f'E{row}'] = running_balance
+                    ws1[f'E{row}'].number_format = '₹#,##0.00'
                     row += 1
-                    
-                    # Add data
-                    for debit in debits:
-                        ws[f'A{row}'] = debit.debit_date.strftime('%d-%b-%Y')
-                        ws[f'B{row}'] = f"Week {debit.week_number}"
-                        ws[f'C{row}'] = debit.description
-                        ws[f'D{row}'] = debit.amount
-                        ws[f'D{row}'].number_format = '₹#,##0.00'
+                
+                # Add individual debit entries for this day (skip 0 amounts)
+                for debit_entry in day_data['debits']:
+                    if debit_entry['amount'] > 0:
+                        running_balance -= debit_entry['amount']
+                        ws1[f'A{row}'] = ''
+                        ws1[f'B{row}'] = debit_entry['description']
+                        ws1[f'C{row}'] = ''
+                        ws1[f'D{row}'] = debit_entry['amount']
+                        ws1[f'D{row}'].number_format = '₹#,##0.00'
+                        ws1[f'E{row}'] = running_balance
+                        ws1[f'E{row}'].number_format = '₹#,##0.00'
                         row += 1
-                else:
-                    ws[f'A{row}'] = "No debits recorded for this date range."
+                
+                # If day had no sales but had debits, still need to show the day row with 0 sales
+                if day_data['sales'] == 0 and any(d['amount'] > 0 for d in day_data['debits']):
+                    running_balance += 0  # No sales to add
+                    ws1[f'A{row}'] = day_data['date']
+                    ws1[f'B{row}'] = day_data['day']
+                    ws1[f'C{row}'] = 0
+                    ws1[f'C{row}'].number_format = '₹#,##0.00'
+                    ws1[f'D{row}'] = ''
+                    ws1[f'E{row}'] = running_balance
+                    ws1[f'E{row}'].number_format = '₹#,##0.00'
                     row += 1
             
-            # Auto-adjust column widths
-            for column in ws.columns:
+            # Auto-adjust column widths for Sheet 1
+            for column in ws1.columns:
                 max_length = 0
                 column_letter = column[0].column_letter
                 for cell in column:
                     if cell.value:
                         max_length = max(max_length, len(str(cell.value)))
                 adjusted_width = max_length + 2
-                ws.column_dimensions[column_letter].width = adjusted_width
+                ws1.column_dimensions[column_letter].width = adjusted_width
+            
+            # ========== SHEET 2: Sales & Debit Summary ==========
+            ws2 = wb.create_sheet("Sales & Debits")
+            
+            # Add title
+            ws2['A1'] = f"Sales & Debit Summary - {start_date.strftime('%d-%b-%Y')} to {end_date.strftime('%d-%b-%Y')}"
+            ws2['A1'].font = openpyxl.styles.Font(size=14, bold=True)
+            
+            ws2['A2'] = f"Period: {date_range_days} days"
+            ws2['A2'].font = openpyxl.styles.Font(italic=True)
+            
+            row = 4
+            
+            # Add summary
+            ws2[f'A{row}'] = "SUMMARY"
+            ws2[f'A{row}'].font = openpyxl.styles.Font(bold=True)
+            row += 1
+            
+            ws2[f'A{row}'] = "Gross Credit:"
+            ws2[f'B{row}'] = total_sales
+            ws2[f'B{row}'].number_format = '₹#,##0.00'
+            row += 1
+            
+            ws2[f'A{row}'] = "Total Debits:"
+            ws2[f'B{row}'] = total_debits
+            ws2[f'B{row}'].number_format = '₹#,##0.00'
+            row += 1
+            
+            ws2[f'A{row}'] = "Net Balance:"
+            ws2[f'B{row}'] = net_sales
+            ws2[f'B{row}'].font = openpyxl.styles.Font(bold=True)
+            ws2[f'B{row}'].number_format = '₹#,##0.00'
+            row += 2
+            
+            # Add Daily Sales Amount section
+            ws2[f'A{row}'] = "DAILY SALES AMOUNT"
+            ws2[f'A{row}'].font = openpyxl.styles.Font(bold=True)
+            row += 1
+            
+            # Add headers for daily sales
+            ws2[f'A{row}'] = "Date"
+            ws2[f'B{row}'] = "Day"
+            ws2[f'C{row}'] = "Sales"
+            for col in range(1, 4):
+                cell = ws2.cell(row=row, column=col)
+                cell.font = openpyxl.styles.Font(bold=True)
+            row += 1
+            
+            # Add daily sales data - skip entries with 0 values
+            for day_data in daily_sales:
+                if day_data['sales'] > 0:
+                    ws2[f'A{row}'] = day_data['date']
+                    ws2[f'B{row}'] = day_data['day']
+                    ws2[f'C{row}'] = day_data['sales']
+                    ws2[f'C{row}'].number_format = '₹#,##0.00'
+                    row += 1
+            
+            row += 1  # Add space
+            
+            # Add Debit History section
+            ws2[f'A{row}'] = "DEBIT HISTORY"
+            ws2[f'A{row}'].font = openpyxl.styles.Font(bold=True)
+            row += 1
+            
+            if debits.exists():
+                # Add headers
+                ws2[f'A{row}'] = "Date"
+                ws2[f'B{row}'] = "Week #"
+                ws2[f'C{row}'] = "Description"
+                ws2[f'D{row}'] = "Amount"
+                for col in range(1, 5):
+                    cell = ws2.cell(row=row, column=col)
+                    cell.font = openpyxl.styles.Font(bold=True)
+                row += 1
+                
+                # Add data - skip 0 amounts
+                for debit in debits:
+                    if float(debit.amount) > 0:
+                        ws2[f'A{row}'] = debit.debit_date.strftime('%d-%b-%Y')
+                        ws2[f'B{row}'] = f"Week {debit.week_number}"
+                        ws2[f'C{row}'] = debit.description
+                        ws2[f'D{row}'] = debit.amount
+                        ws2[f'D{row}'].number_format = '₹#,##0.00'
+                        row += 1
+            else:
+                ws2[f'A{row}'] = "No debits recorded for this date range."
+                row += 1
+            
+            # Auto-adjust column widths for Sheet 2
+            for column in ws2.columns:
+                max_length = 0
+                column_letter = column[0].column_letter
+                for cell in column:
+                    if cell.value:
+                        max_length = max(max_length, len(str(cell.value)))
+                adjusted_width = max_length + 2
+                ws2.column_dimensions[column_letter].width = adjusted_width
             
             # Set up the response for downloading the file
             response = HttpResponse(
